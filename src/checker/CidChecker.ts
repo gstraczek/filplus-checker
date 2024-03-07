@@ -62,9 +62,9 @@ export default class CidChecker {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
-  private static readonly GetClientShortIdQuery = `SELECT client, client_address
-                                                   from client_mapping
-                                                   where client_address = ANY ($1)`
+  //private static readonly GetClientShortIdQuery = `SELECT client, client_address
+  //                                                 from client_mapping
+  //                                                 where client_address = ANY ($1)`
   private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
@@ -155,10 +155,10 @@ export default class CidChecker {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
-  private async getClientShortIDs (clientAddresses: string[]): Promise<string[]> {
-    const result = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clientAddresses]), { retries: 3 })
-    return result.rows.map((row: any) => row.client)
-  }
+  //private async getClientShortIDs (clientAddresses: string[]): Promise<string[]> {
+  //  const result = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clientAddresses]), { retries: 3 })
+  //  return result.rows.map((row: any) => row.client)
+  //}
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
     const params = []
@@ -519,7 +519,7 @@ export default class CidChecker {
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
-    const shortIDs = await this.getClientShortIDs(addressGroup)
+    //const shortIDs = await this.getClientShortIDs(addressGroup)
 
     const [providerDistributions, replicationDistributions, cidSharing] =
       await Promise.all([
