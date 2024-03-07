@@ -8,7 +8,7 @@ export function getCidChecker (logger: Logger): CidChecker {
   if (process.env.UPLOAD_REPO_OWNER === undefined ||
     process.env.UPLOAD_REPO_NAME === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_NAME === undefined ||
-    process.env.UPLOAD_TOKEN === undefined ||
+//    process.env.UPLOAD_TOKEN === undefined ||
     process.env.IPINFO_TOKEN === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_EMAIL === undefined) {
     throw new Error('IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
@@ -17,10 +17,6 @@ export function getCidChecker (logger: Logger): CidChecker {
   const allocationBotId = parseInt(process.env.ALLOCATION_BOT_ID ?? '0')
   if (allocationBotId <= 0 || isNaN(allocationBotId)) {
     throw new Error('ALLOCATION_BOT_ID must be defined')
-  }
-
-  if (process.env.RETRIEVAL_BOT_MONGO_URL === undefined) {
-    throw new Error('RETRIEVAL_BOT_MONGO_URL must be defined')
   }
 
   const fileUploadConfig: FileUploadConfig = {
@@ -34,7 +30,9 @@ export function getCidChecker (logger: Logger): CidChecker {
   }
 
   const octokit = new Octokit({
-    auth: process.env.UPLOAD_TOKEN,
+//    auth: process.env.UPLOAD_TOKEN,
+    appId: parseInt(process.env.APP_ID ?? '0'),
+    privateKey: process.env.PRIVATE_KEY,
     log: logger
   })
 

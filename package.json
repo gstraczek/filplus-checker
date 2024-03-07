@@ -1,7 +1,7 @@
 {
-  "name": "@data-preservation-programs/filplus-checker",
+  "name": "@fidlabs/filplus-checker",
   "version": "0.0.1",
-  "description": "Checker tool for Fil+ datacap applications",
+  "description": "Checker tool for allocator datacap applications",
   "scripts": {
     "build": "tsc",
     "test": "jasmine-ts --config=jasmine.json",
@@ -13,7 +13,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/data-preservation-programs/filplus-checker.git"
+    "url": "git+https://github.com/fidlabs/filplus-checker.git"
   },
   "keywords": [
     "fil+",
@@ -23,7 +23,7 @@
     "checker"
   ],
   "license": "MIT",
-  "homepage": "https://github.com/data-preservation-programs/filplus-checker",
+  "homepage": "https://github.com/fidlabs/filplus-checker",
   "devDependencies": {
     "@types/async-retry": "^1.4.5",
     "@types/aws-lambda": "^8.10.109",
@@ -56,7 +56,6 @@
     "chartjs-plugin-datalabels": "^2.1.0",
     "date-fns": "^2.30.0",
     "markdown-table": "^2.0.0",
-    "mongodb": "^5.5.0",
     "multiaddr": "^10.0.1",
     "nock": "^13.2.9",
     "node-emoji": "^1.11.0",

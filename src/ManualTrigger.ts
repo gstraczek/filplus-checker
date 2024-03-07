@@ -7,11 +7,25 @@ import * as dotenv from 'dotenv'
 export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context): Promise<APIGatewayProxyResult> {
   dotenv.config()
   const issueId = event.queryStringParameters?.issueId
+  const repo = event.queryStringParameters?.repo
   const otherAddresses: string[] = event.queryStringParameters?.otherAddresses?.split(' ') ?? []
   if (issueId === undefined) {
     return {
       statusCode: 400,
       body: 'Missing issueId'
+    }
+  }
+  if (repo === undefined) {
+    return {
+      statusCode: 400,
+      body: 'Missing repo'
+    }
+  }
+  const ownerSplit = repo.split('/')
+  if (ownerSplit.length !== 2) {
+    return {
+      statusCode: 400,
+      body: 'Invalid repo'
     }
   }
 
@@ -20,8 +34,8 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
   type Params = RestEndpointMethodTypes['issues']['get']['parameters']
   type Response = RestEndpointMethodTypes['issues']['get']['response']
   const params: Params = {
-    owner: 'filecoin-project',
-    repo: 'filecoin-plus-large-datasets',
+    owner: ownerSplit[0],
+    repo: ownerSplit[1],
     issue_number: parseInt(issueId)
   }
   logger.info(`Fetching issue ${issueId}`)
@@ -38,10 +52,10 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
     issue: response.data,
     repository: {
       owner: {
-        login: 'filecoin-project'
+        login: ownerSplit[0]
       },
-      name: 'filecoin-plus-large-datasets',
-      full_name: 'filecoin-project/filecoin-plus-large-datasets'
+      name: ownerSplit[1],
+      full_name: repo,
     }
   } as any, [{
     maxProviderDealPercentage: 0.25,

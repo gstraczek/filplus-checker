@@ -160,10 +160,6 @@ export default class CidChecker {
     return result.rows.map((row: any) => row.client)
   }
 
-  private getRetrievalDashboardURL (clientShortIds: string[]): string {
-    return 'https://retrievalbot-dashboard.vercel.app/?clients=' + clientShortIds.join('+')
-  }
-
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
     const params = []
     for (let i = 1; i <= providers.length; i++) {
@@ -790,7 +786,6 @@ export default class CidChecker {
     const contentUrl = await this.uploadReport(joinedContent, event)
     summary.push('### Full report')
     summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
-    summary.push(`Click ${generateLink('here', this.getRetrievalDashboardURL(shortIDs))} to view the Retrieval Dashboard.`)
     return [summary.join('\n'), joinedContent]
   }
 
