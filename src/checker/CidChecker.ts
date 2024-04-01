@@ -385,10 +385,39 @@ export default class CidChecker {
     return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
   }
 
-  private static readonly commentsCache = new Map<number, Array<{
-    body?: string
-    user: { login: string | undefined, id: number } | undefined | null
-  }>>()
+
+private static readonly prCache = new Map<number, any>()
+
+private async getRecordByPR (prNumber: number, repo: Repository): Promise<any> {
+    if (CidChecker.prCache.has(prNumber)) {
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return CidChecker.prCache.get(prNumber)!
+    }
+    type Params = RestEndpointMethodTypes['pulls']['get']['parameters']
+    const params: Params = {
+      owner: repo.owner.login,
+      repo: repo.name,
+      pull_number: prNumber
+    }
+    this.logger.info(params, 'Getting PR')
+    const response: any | null = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', params), { retries: 3 })
+    if (response == null) {
+      throw new Error('Failed to get PR')
+    }
+    const editedFile = response.data[0].contents_url
+
+    const editedFileData = await this.octokit.request('GET ' + editedFile, {});
+
+    const outData = atob(editedFileData.data.content)
+
+    CidChecker.prCache.set(prNumber, outData)
+    return outData
+}
+
+private static readonly commentsCache = new Map<number, Array<{
+  body?: string
+  user: { login: string | undefined, id: number } | undefined | null
+}>>()
 
   private async getComments (issueNumber: number, repo: Repository): Promise<Array<{
     body?: string
