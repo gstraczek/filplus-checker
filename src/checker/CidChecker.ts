@@ -345,7 +345,7 @@ export default class CidChecker {
 
   private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
     const comments = await this.getComments(issue.number, repo)
-    return comments.filter((comment) => comment.user?.id === this.allocationBotId && comment.body?.includes('## DataCap Allocation requested')).length
+    return comments.filter((comment) => comment.performed_via_github_app?.id === this.allocationBotId && comment.body?.includes('## DataCap Allocation requested')).length
   }
 
   private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
@@ -414,18 +414,21 @@ private async getRecordByPR (prNumber: number, repo: Repository): Promise<any> {
     return outData
 }
 
-private static readonly commentsCache = new Map<number, Array<{
+private static readonly commentsCache = new Map<string, Array<{
   body?: string
   user: { login: string | undefined, id: number } | undefined | null
+  performed_via_github_app?	: { id: number } | undefined | null
 }>>()
 
   private async getComments (issueNumber: number, repo: Repository): Promise<Array<{
     body?: string
     user: { login: string | undefined, id: number } | undefined | null
+    performed_via_github_app?	: { id: number } | undefined | null
   }>> {
-    if (CidChecker.commentsCache.has(issueNumber)) {
+    const key = `${repo.owner.login}/${repo.name}/${issueNumber}`
+    if (CidChecker.commentsCache.has(key)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return CidChecker.commentsCache.get(issueNumber)!
+      return CidChecker.commentsCache.get(key)!
     }
     type Params = RestEndpointMethodTypes['issues']['listComments']['parameters']
     type Response = RestEndpointMethodTypes['issues']['listComments']['response']
@@ -459,7 +462,7 @@ private static readonly commentsCache = new Map<number, Array<{
       page++
     }
 
-    CidChecker.commentsCache.set(issueNumber, comments)
+    CidChecker.commentsCache.set(key, comments)
     return comments
   }
 
