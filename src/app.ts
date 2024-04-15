@@ -1,6 +1,6 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
-import {  IssueCommentCreatedEvent, PullRequestReviewCommentCreatedEvent } from "@octokit/webhooks-types"
+import { IssueCommentCreatedEvent, PullRequestReviewCommentCreatedEvent } from '@octokit/webhooks-types'
 import { getCidChecker } from './Dependency'
 import { Criteria } from './checker/CidChecker'
 
@@ -28,9 +28,9 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
       c.maxPercentageForLowReplica === undefined)) {
       throw new Error('Invalid environment variable CRITERIA')
     }
-    const checker = getCidChecker(app.log.child({ contextId: context.id }))
-    if (context.payload.action === 'created' && context.name !== "issues") {
-      const pre : PullRequestReviewCommentCreatedEvent = context.payload as PullRequestReviewCommentCreatedEvent
+    const checker = getCidChecker(app.log.child({ contextId: context.id }), context.octokit)
+    if (context.payload.action === 'created' && context.name !== 'issues') {
+      const pre: PullRequestReviewCommentCreatedEvent = context.payload as PullRequestReviewCommentCreatedEvent
 
       const result = await checker.checkFromPR(pre, criteria, otherAddresses)
       if (result === undefined) {
@@ -41,14 +41,14 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
       const issueComment = context.issue({
         body: result[0]
       })
-  
+
       if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
         await context.octokit.issues.createComment(issueComment)
       }
-  
+
       return
     }
-    const icce : IssueCommentCreatedEvent = context.payload as IssueCommentCreatedEvent
+    const icce: IssueCommentCreatedEvent = context.payload as IssueCommentCreatedEvent
     const result = await checker.check(icce, criteria, otherAddresses)
     if (result === undefined) {
       app.log.info('No comment to post')

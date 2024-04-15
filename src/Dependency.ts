@@ -4,11 +4,11 @@ import CidChecker, { FileUploadConfig } from './checker/CidChecker'
 import { Octokit } from '@octokit/core'
 
 export const pool = new Pool()
-export function getCidChecker (logger: Logger): CidChecker {
+export function getCidChecker (logger: Logger, octo?: Octokit): CidChecker {
   if (process.env.UPLOAD_REPO_OWNER === undefined ||
     process.env.UPLOAD_REPO_NAME === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_NAME === undefined ||
-//    process.env.UPLOAD_TOKEN === undefined ||
+  //    process.env.UPLOAD_TOKEN === undefined ||
     process.env.IPINFO_TOKEN === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_EMAIL === undefined) {
     throw new Error('IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
@@ -24,21 +24,22 @@ export function getCidChecker (logger: Logger): CidChecker {
     repo: process.env.UPLOAD_REPO_NAME,
     branch: process.env.UPLOAD_REPO_BRANCH,
     committerName: process.env.UPLOAD_REPO_COMMITTER_NAME,
-    committerEmail: process.env.UPLOAD_REPO_COMMITTER_EMAIL,
-    searchRepoLarge: 'filecoin-project/filecoin-plus-large-datasets',
-    searchRepo: 'filecoin-project/filecoin-plus-client-onboarding'
+    committerEmail: process.env.UPLOAD_REPO_COMMITTER_EMAIL
   }
 
-  const octokit = new Octokit({
-//    auth: process.env.UPLOAD_TOKEN,
-    appId: parseInt(process.env.APP_ID ?? '0'),
-    privateKey: process.env.PRIVATE_KEY,
-    log: logger
-  })
+  if (octo === undefined) {
+    const octokit = new Octokit({
+      //    auth: process.env.UPLOAD_TOKEN,
+      appId: parseInt(process.env.APP_ID ?? '0'),
+      privateKey: process.env.PRIVATE_KEY,
+      log: logger
+    })
+    octo = octokit
+  }
 
   return new CidChecker(
     pool,
-    octokit,
+    octo,
     fileUploadConfig,
     logger,
     process.env.IPINFO_TOKEN,

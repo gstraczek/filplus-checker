@@ -55,7 +55,7 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
         login: ownerSplit[0]
       },
       name: ownerSplit[1],
-      full_name: repo,
+      full_name: repo
     }
   } as any, [{
     maxProviderDealPercentage: 0.25,

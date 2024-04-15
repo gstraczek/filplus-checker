@@ -40,8 +40,6 @@ export interface FileUploadConfig {
   branch?: string
   committerName: string
   committerEmail: string
-  searchRepoLarge: string
-  searchRepo: string
 }
 
 export interface Criteria {
@@ -63,7 +61,7 @@ export default class CidChecker {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
-  //private static readonly GetClientShortIdQuery = `SELECT client, client_address
+  // private static readonly GetClientShortIdQuery = `SELECT client, client_address
   //                                                 from client_mapping
   //                                                 where client_address = ANY ($1)`
   private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
@@ -156,10 +154,10 @@ export default class CidChecker {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
-  //private async getClientShortIDs (clientAddresses: string[]): Promise<string[]> {
+  // private async getClientShortIDs (clientAddresses: string[]): Promise<string[]> {
   //  const result = await retry(async () => await this.sql.query(CidChecker.GetClientShortIdQuery, [clientAddresses]), { retries: 3 })
   //  return result.rows.map((row: any) => row.client)
-  //}
+  // }
 
   private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
     const params = []
@@ -228,6 +226,7 @@ export default class CidChecker {
       path,
       message: commitMessage,
       content: base64Content,
+      branch: this.fileUploadConfig.branch,
       committer: {
         name: this.fileUploadConfig.committerName,
         email: this.fileUploadConfig.committerEmail
@@ -242,19 +241,25 @@ export default class CidChecker {
     }, 'Uploading file')
 
     try {
-    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), { retries: 3 })
-    this.logger.info({
-      owner: params.owner,
-      repo: params.repo,
-      path: params.path,
-      message: params.message
-    }, 'Uploaded file')
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-    return [response.data.content!.download_url!, response.data.content!.html_url!]
-
-  } catch (error: any) {
+      const response: Response = await retry(async () => {
+        try {
+          return await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params)
+        } catch (e: any) {
+          this.logger.error('Error uploading file', e.toString())
+          throw e
+        }
+      }, { retries: 3 })
+      this.logger.info({
+        owner: params.owner,
+        repo: params.repo,
+        path: params.path,
+        message: params.message
+      }, 'Uploaded file')
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      return [response.data.content!.download_url!, response.data.content!.html_url!]
+    } catch (error: any) {
       this.logger.error('Error uploading file %s: %s', params.path, error.message)
-      return ["", ""]
+      return ['', '']
     }
   }
 
@@ -392,10 +397,9 @@ export default class CidChecker {
     return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
   }
 
+  private static readonly prCache = new Map<number, any>()
 
-private static readonly prCache = new Map<number, any>()
-
-private async getRecordByPR (prNumber: number, repo: Repository): Promise<DatacapAllocation> {
+  private async getRecordByPR (prNumber: number, repo: Repository): Promise<DatacapAllocation> {
     if (CidChecker.prCache.has(prNumber)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.prCache.get(prNumber)!
@@ -411,86 +415,86 @@ private async getRecordByPR (prNumber: number, repo: Repository): Promise<Dataca
     if (response == null) {
       throw new Error('Failed to get PR')
     }
-    const editedFile = response.data[0].contents_url
+    const editedFile: string = response.data[0].contents_url
 
-    const editedFileData = await this.octokit.request('GET ' + editedFile, {});
+    const editedFileData = await this.octokit.request(`GET ${editedFile}`, {})
 
     const outData = atob(editedFileData.data.content)
-    const outRecord : DatacapAllocation = JSON.parse(outData)
+    const outRecord: DatacapAllocation = JSON.parse(outData)
 
     CidChecker.prCache.set(prNumber, outRecord)
     return outRecord
-}
-
-private async getIssueForRecord(record: DatacapAllocation, repo: Repository): Promise<Issue> {
-  const issueNum = record['Issue Number']
-
-  const params = {
-    owner: repo.owner,
-    repo:repo.name,
-    issueNum: issueNum
-  }
-  //type IssueResponse = RestEndpointMethodTypes['issues']['get']['response']
-
-  const response: any = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issueNum}', params), { retries: 3 })
-
-  const ri : Issue = {
-    number: response.data.number,
-    title: response.data.title,
-    body: response.data.body!,
-    user: {
-      name: response.data.user!.name!,
-      login: response.data.user!.login!,
-      id: response.data.user!.id!,
-      node_id: response.data.user!.node_id!,
-      avatar_url: response.data.user!.avatar_url!,
-      gravatar_id: response.data.user!.gravatar_id!,
-      url: response.data.user!.url!,
-      html_url: response.data.user!.html_url!,
-      followers_url: response.data.user!.followers_url!,
-      following_url: response.data.user!.following_url!,
-      gists_url: response.data.user!.gists_url!,
-      starred_url: response.data.user!.starred_url!,
-      subscriptions_url: response.data.user!.subscriptions_url!,
-      organizations_url: response.data.user!.organizations_url!,
-      repos_url: response.data.user!.repos_url!,
-      events_url: response.data.user!.events_url!,
-      received_events_url: response.data.user!.received_events_url!,
-      type: "User",
-      site_admin: response.data.user!.site_admin!,
-    },
-    url: response.data.html_url,
-    repository_url: response.data.repository_url,
-    labels_url: response.data.labels_url,
-    comments_url: response.data.comments_url,
-    events_url: response.data.events_url,
-    html_url: response.data.html_url,
-    id: response.data.id,
-    node_id: response.data.node_id,
-    assignees: [],
-    milestone: null,
-    comments: response.data.comments,
-    created_at: response.data.created_at,
-    updated_at: response.data.updated_at,
-    closed_at: response.data.closed_at,
-    author_association: response.data.author_association,
-    active_lock_reason: null,
-    reactions: response.data.reactions!,
   }
 
-  return ri
-}
+  private async getIssueForRecord (record: DatacapAllocation, repo: Repository): Promise<Issue> {
+    const issueNum = record['Issue Number']
 
-private static readonly commentsCache = new Map<string, Array<{
-  body?: string
-  user: { login: string | undefined, id: number } | undefined | null
-  performed_via_github_app?	: { id: number } | undefined | null
-}>>()
+    const params = {
+      owner: repo.owner,
+      repo: repo.name,
+      issueNum
+    }
+    // type IssueResponse = RestEndpointMethodTypes['issues']['get']['response']
+
+    const response: any = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issueNum}', params), { retries: 3 })
+
+    const ri: Issue = {
+      number: response.data.number,
+      title: response.data.title,
+      body: response.data.body!,
+      user: {
+        name: response.data.user!.name!,
+        login: response.data.user!.login!,
+        id: response.data.user!.id!,
+        node_id: response.data.user!.node_id!,
+        avatar_url: response.data.user!.avatar_url!,
+        gravatar_id: response.data.user!.gravatar_id!,
+        url: response.data.user!.url!,
+        html_url: response.data.user!.html_url!,
+        followers_url: response.data.user!.followers_url!,
+        following_url: response.data.user!.following_url!,
+        gists_url: response.data.user!.gists_url!,
+        starred_url: response.data.user!.starred_url!,
+        subscriptions_url: response.data.user!.subscriptions_url!,
+        organizations_url: response.data.user!.organizations_url!,
+        repos_url: response.data.user!.repos_url!,
+        events_url: response.data.user!.events_url!,
+        received_events_url: response.data.user!.received_events_url!,
+        type: 'User',
+        site_admin: response.data.user!.site_admin!
+      },
+      url: response.data.html_url,
+      repository_url: response.data.repository_url,
+      labels_url: response.data.labels_url,
+      comments_url: response.data.comments_url,
+      events_url: response.data.events_url,
+      html_url: response.data.html_url,
+      id: response.data.id,
+      node_id: response.data.node_id,
+      assignees: [],
+      milestone: null,
+      comments: response.data.comments,
+      created_at: response.data.created_at,
+      updated_at: response.data.updated_at,
+      closed_at: response.data.closed_at,
+      author_association: response.data.author_association,
+      active_lock_reason: null,
+      reactions: response.data.reactions!
+    }
+
+    return ri
+  }
+
+  private static readonly commentsCache = new Map<string, Array<{
+    body?: string
+    user: { login: string | undefined, id: number } | undefined | null
+    performed_via_github_app?: { id: number } | undefined | null
+  }>>()
 
   private async getComments (issueNumber: number, repo: Repository): Promise<Array<{
     body?: string
     user: { login: string | undefined, id: number } | undefined | null
-    performed_via_github_app?	: { id: number } | undefined | null
+    performed_via_github_app?: { id: number } | undefined | null
   }>> {
     const key = `${repo.owner.login}/${repo.name}/${issueNumber}`
     if (CidChecker.commentsCache.has(key)) {
@@ -585,10 +589,10 @@ private static readonly commentsCache = new Map<string, Array<{
     return null
   }
 
-  public async checkFromPR(pr: PullRequestReviewCommentCreatedEvent, criterias: Criteria[], otherAddress: string[] = []): Promise<[summary: string, content: string | undefined]> {
+  public async checkFromPR (pr: PullRequestReviewCommentCreatedEvent, criterias: Criteria[], otherAddress: string[] = []): Promise<[summary: string, content: string | undefined]> {
     const record = await this.getRecordByPR(pr.pull_request.id, pr.repository)
     const issue = await this.getIssueForRecord(record, pr.repository)
-    return this.check({issue: issue, repository: pr.repository}, criterias, otherAddress)
+    return await this.check({ issue, repository: pr.repository }, criterias, otherAddress)
   }
 
   public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
@@ -624,7 +628,7 @@ private static readonly commentsCache = new Map<string, Array<{
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
     const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
 
-    //const shortIDs = await this.getClientShortIDs(addressGroup)
+    // const shortIDs = await this.getClientShortIDs(addressGroup)
 
     const [providerDistributions, replicationDistributions, cidSharing] =
       await Promise.all([
