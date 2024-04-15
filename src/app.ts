@@ -1,10 +1,11 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
+import {  IssueCommentCreatedEvent, PullRequestReviewCommentCreatedEvent } from "@octokit/webhooks-types"
 import { getCidChecker } from './Dependency'
 import { Criteria } from './checker/CidChecker'
 
 const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunctionOptions): void => {
-  app.on(['issues.labeled', 'issue_comment.created'], async (context) => {
+  app.on(['issues.labeled', 'issue_comment.created', 'pull_request_review_comment.created'], async (context) => {
     const otherAddresses: string[] = []
     if (context.payload.action === 'labeled') {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion,@typescript-eslint/no-non-null-asserted-optional-chain
@@ -28,7 +29,27 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
       throw new Error('Invalid environment variable CRITERIA')
     }
     const checker = getCidChecker(app.log.child({ contextId: context.id }))
-    const result = await checker.check(context.payload, criteria, otherAddresses)
+    if (context.pullRequest != null) {
+      const pre : PullRequestReviewCommentCreatedEvent = context.payload as PullRequestReviewCommentCreatedEvent
+
+      const result = await checker.checkFromPR(pre, criteria, otherAddresses)
+      if (result === undefined) {
+        app.log.info('No comment to post')
+        return
+      }
+      app.log({ body: result })
+      const issueComment = context.issue({
+        body: result[0]
+      })
+  
+      if (process.env.DRY_RUN !== 'true' && process.env.DRY_RUN !== '1') {
+        await context.octokit.issues.createComment(issueComment)
+      }
+  
+      return
+    }
+    const icce : IssueCommentCreatedEvent = context.payload as IssueCommentCreatedEvent
+    const result = await checker.check(icce, criteria, otherAddresses)
     if (result === undefined) {
       app.log.info('No comment to post')
       return

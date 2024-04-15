@@ -1,4 +1,5 @@
-import { Issue, Repository } from '@octokit/webhooks-types'
+import { Issue, Repository, PullRequestReviewCommentCreatedEvent } from '@octokit/webhooks-types'
+import { RequestError } from "@octokit/request-error";
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -29,6 +30,7 @@ import BarChart, { BarChartEntry } from '../charts/BarChart'
 import GeoMap, { GeoMapEntry } from '../charts/GeoMap'
 import { Chart, LegendOptions } from 'chart.js'
 import { parseIssue } from '../ldn-parser-functions/parseIssue'
+import { DatacapAllocation } from './application'
 
 const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
@@ -239,8 +241,9 @@ export default class CidChecker {
       path: params.path,
       message: params.message
     }, 'Uploading file')
-    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), { retries: 3 })
 
+    try {
+    const response: Response = await retry(async () => await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params), { retries: 3 })
     this.logger.info({
       owner: params.owner,
       repo: params.repo,
@@ -249,6 +252,11 @@ export default class CidChecker {
     }, 'Uploaded file')
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return [response.data.content!.download_url!, response.data.content!.html_url!]
+
+  } catch (error: any) {
+      this.logger.error('Error uploading file %s: %s', params.path, error.message)
+      return ["", ""]
+    }
   }
 
   private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[], colorThreshold: number): string {
@@ -388,7 +396,7 @@ export default class CidChecker {
 
 private static readonly prCache = new Map<number, any>()
 
-private async getRecordByPR (prNumber: number, repo: Repository): Promise<any> {
+private async getRecordByPR (prNumber: number, repo: Repository): Promise<DatacapAllocation> {
     if (CidChecker.prCache.has(prNumber)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.prCache.get(prNumber)!
@@ -409,9 +417,69 @@ private async getRecordByPR (prNumber: number, repo: Repository): Promise<any> {
     const editedFileData = await this.octokit.request('GET ' + editedFile, {});
 
     const outData = atob(editedFileData.data.content)
+    const outRecord : DatacapAllocation = JSON.parse(outData)
 
-    CidChecker.prCache.set(prNumber, outData)
-    return outData
+    CidChecker.prCache.set(prNumber, outRecord)
+    return outRecord
+}
+
+private async getIssueForRecord(record: DatacapAllocation, repo: Repository): Promise<Issue> {
+  const issueNum = record['Issue Number']
+
+  const params = {
+    owner: repo.owner,
+    repo:repo.name,
+    issueNum: issueNum
+  }
+  //type IssueResponse = RestEndpointMethodTypes['issues']['get']['response']
+
+  const response: any = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issueNum}', params), { retries: 3 })
+
+  const ri : Issue = {
+    number: response.data.number,
+    title: response.data.title,
+    body: response.data.body!,
+    user: {
+      name: response.data.user!.name!,
+      login: response.data.user!.login!,
+      id: response.data.user!.id!,
+      node_id: response.data.user!.node_id!,
+      avatar_url: response.data.user!.avatar_url!,
+      gravatar_id: response.data.user!.gravatar_id!,
+      url: response.data.user!.url!,
+      html_url: response.data.user!.html_url!,
+      followers_url: response.data.user!.followers_url!,
+      following_url: response.data.user!.following_url!,
+      gists_url: response.data.user!.gists_url!,
+      starred_url: response.data.user!.starred_url!,
+      subscriptions_url: response.data.user!.subscriptions_url!,
+      organizations_url: response.data.user!.organizations_url!,
+      repos_url: response.data.user!.repos_url!,
+      events_url: response.data.user!.events_url!,
+      received_events_url: response.data.user!.received_events_url!,
+      type: "User",
+      site_admin: response.data.user!.site_admin!,
+    },
+    url: response.data.html_url,
+    repository_url: response.data.repository_url,
+    labels_url: response.data.labels_url,
+    comments_url: response.data.comments_url,
+    events_url: response.data.events_url,
+    html_url: response.data.html_url,
+    id: response.data.id,
+    node_id: response.data.node_id,
+    assignees: [],
+    milestone: null,
+    comments: response.data.comments,
+    created_at: response.data.created_at,
+    updated_at: response.data.updated_at,
+    closed_at: response.data.closed_at,
+    author_association: response.data.author_association,
+    active_lock_reason: null,
+    reactions: response.data.reactions!,
+  }
+
+  return ri
 }
 
 private static readonly commentsCache = new Map<string, Array<{
@@ -518,6 +586,12 @@ private static readonly commentsCache = new Map<string, Array<{
     return null
   }
 
+  public async checkFromPR(pr: PullRequestReviewCommentCreatedEvent, criterias: Criteria[], otherAddress: string[] = []): Promise<[summary: string, content: string | undefined]> {
+    const record = await this.getRecordByPR(pr.pull_request.id, pr.repository)
+    const issue = await this.getIssueForRecord(record, pr.repository)
+    return this.check({issue: issue, repository: pr.repository}, criterias, otherAddress)
+  }
+
   public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
     maxProviderDealPercentage: 0.25,
     maxDuplicationPercentage: 0.20,
@@ -539,7 +613,7 @@ private static readonly commentsCache = new Map<string, Array<{
     }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      return [CidChecker.getErrorContent('No application info found for this issue on https://filplus.d.interplanetary.one/clients.'), undefined]
+      return [CidChecker.getErrorContent('No application info found for this issue on https://datacapstats.io/clients.'), undefined]
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
