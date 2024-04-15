@@ -29,7 +29,7 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
       throw new Error('Invalid environment variable CRITERIA')
     }
     const checker = getCidChecker(app.log.child({ contextId: context.id }))
-    if (context.pullRequest != null) {
+    if (context.pullRequest != undefined) {
       const pre : PullRequestReviewCommentCreatedEvent = context.payload as PullRequestReviewCommentCreatedEvent
 
       const result = await checker.checkFromPR(pre, criteria, otherAddresses)

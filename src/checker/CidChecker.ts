@@ -1,5 +1,4 @@
 import { Issue, Repository, PullRequestReviewCommentCreatedEvent } from '@octokit/webhooks-types'
-import { RequestError } from "@octokit/request-error";
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
