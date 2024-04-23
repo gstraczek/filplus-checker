@@ -60,7 +60,11 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
         return
       }
 
-      res.send(result)
+      if(result[1] == null) {
+        res.contentType('text/plain').send(result[0])
+      } else {
+        res.contentType('text/plain').send(result[0] + result[1])
+      }
     })
   }
 

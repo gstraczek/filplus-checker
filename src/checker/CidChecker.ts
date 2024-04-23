@@ -250,7 +250,7 @@ export default class CidChecker {
       const fullURL = pathJoin(this.fileUploadConfig.localBaseURL, path)
       try {
         fs.mkdirSync(fullPath, { recursive: true })
-        fs.writeFileSync(path, Buffer.from(base64Content, 'base64'))
+        fs.writeFileSync(pathJoin(local, path), Buffer.from(base64Content, 'base64'))
         return [fullURL, fullURL]
       } catch (e) {
         this.logger.error('Error uploading file %s: %s', params.path, e)
