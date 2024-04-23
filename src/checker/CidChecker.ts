@@ -247,7 +247,7 @@ export default class CidChecker {
     if (local) {
       const base = dirname(path)
       const fullPath = pathJoin(local, base)
-      const fullURL = pathJoin(this.fileUploadConfig.localBaseURL, path)
+      const fullURL = this.fileUploadConfig.localBaseURL + path
       try {
         fs.mkdirSync(fullPath, { recursive: true })
         fs.writeFileSync(pathJoin(local, path), Buffer.from(base64Content, 'base64'))
