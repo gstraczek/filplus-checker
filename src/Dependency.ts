@@ -20,6 +20,8 @@ export function getCidChecker (logger: Logger, octo?: Octokit): CidChecker {
   }
 
   const fileUploadConfig: FileUploadConfig = {
+    local: process.env.UPLOAD_DIR,
+    localBaseURL: process.env.UPLOAD_BASE_URL || '',
     owner: process.env.UPLOAD_REPO_OWNER,
     repo: process.env.UPLOAD_REPO_NAME,
     branch: process.env.UPLOAD_REPO_BRANCH,

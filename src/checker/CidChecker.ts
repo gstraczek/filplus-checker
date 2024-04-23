@@ -15,6 +15,8 @@ import {
   GetVerifiedClientResponse
 } from './Types'
 import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
+import * as fs from 'fs'
+import { dirname, join as pathJoin } from 'path'
 import xbytes from 'xbytes'
 import emoji from 'node-emoji'
 import retry from 'async-retry'
@@ -35,6 +37,8 @@ const RED = 'rgba(255, 99, 132)'
 const GREEN = 'rgba(75, 192, 192)'
 
 export interface FileUploadConfig {
+  local: string | undefined
+  localBaseURL: string
   owner: string
   repo: string
   branch?: string
@@ -217,7 +221,7 @@ export default class CidChecker {
   }
 
   private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<[download_url: string, html_url: string]> {
-    const { owner, repo } = this.fileUploadConfig
+    const { local, owner, repo } = this.fileUploadConfig
     type Params = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['parameters']
     type Response = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['response']
     const params: Params = {
@@ -239,6 +243,20 @@ export default class CidChecker {
       path: params.path,
       message: params.message
     }, 'Uploading file')
+
+    if (local) {
+      const base = dirname(path)
+      const fullPath = pathJoin(local, base)
+      const fullURL = pathJoin(this.fileUploadConfig.localBaseURL, path)
+      try {
+        fs.mkdirSync(fullPath, { recursive: true })
+        fs.writeFileSync(path, Buffer.from(base64Content, 'base64'))
+        return [fullURL, fullURL]
+      } catch (e) {
+        this.logger.error('Error uploading file %s: %s', params.path, e)
+        return ['', '']
+      }
+    }
 
     try {
       const response: Response = await retry(async () => {

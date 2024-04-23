@@ -1,10 +1,69 @@
 import { ApplicationFunction, Probot } from 'probot'
 import { ApplicationFunctionOptions } from 'probot/lib/types'
+import { Router, Request, Response } from 'express'
 import { IssueCommentCreatedEvent, PullRequestReviewCommentCreatedEvent } from '@octokit/webhooks-types'
+import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import { getCidChecker } from './Dependency'
 import { Criteria } from './checker/CidChecker'
 
 const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunctionOptions): void => {
+  if (_options.getRouter != null) {
+    const reportRoute: Router = _options.getRouter('/check')
+
+    reportRoute.post('/', async (req: Request, res: Response) => {
+      if (req.query.issue === undefined || req.query.repo === undefined || typeof req.query.repo !== 'string' || typeof req.query.issue !== 'string') {
+        res.status(400).send('Missing issue or repo')
+        return
+      }
+
+      const criteria: Criteria[] = JSON.parse(process.env.CRITERIA ?? '[]')
+      if (criteria.length === 0 || criteria.some(c =>
+        c.lowReplicaThreshold === undefined ||
+        c.maxDuplicationPercentage === undefined ||
+        c.maxProviderDealPercentage === undefined ||
+        c.maxPercentageForLowReplica === undefined)) {
+        throw new Error('Invalid environment variable CRITERIA')
+      }
+
+      const checker = getCidChecker(app.log.child({ contextId: req.id }))
+
+      type Params = RestEndpointMethodTypes['issues']['get']['parameters']
+      type Response = RestEndpointMethodTypes['issues']['get']['response']
+      const ownerSplit = req.query.repo.split('/')
+      const issueId = req.query.issue
+      const params: Params = {
+        owner: ownerSplit[0],
+        repo: ownerSplit[1],
+        issue_number: parseInt(issueId)
+      }
+      app.log(`Fetching issue ${issueId}`)
+      let response: Response
+      try {
+        response = await checker.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', params)
+      } catch (e) {
+        res.end('Error fetching issue ' + issueId)
+        return
+      }
+
+      const result = await checker.check({
+        issue: response.data,
+        repository: {
+          owner: {
+            login: ownerSplit[0]
+          },
+          name: ownerSplit[1],
+          full_name: req.query.repo
+        }
+      } as any, criteria)
+      if (result === undefined) {
+        app.log.info('No comment to post')
+        return
+      }
+
+      res.send(result)
+    })
+  }
+
   app.on(['issues.labeled', 'issue_comment.created', 'pull_request_review_comment.created'], async (context) => {
     const otherAddresses: string[] = []
     if (context.payload.action === 'labeled') {
