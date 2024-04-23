@@ -10,7 +10,7 @@ const handler: ApplicationFunction = (app: Probot, _options: ApplicationFunction
   if (_options.getRouter != null) {
     const reportRoute: Router = _options.getRouter('/check')
 
-    reportRoute.post('/', async (req: Request, res: Response) => {
+    reportRoute.get('/', async (req: Request, res: Response) => {
       if (req.query.issue === undefined || req.query.repo === undefined || typeof req.query.repo !== 'string' || typeof req.query.issue !== 'string') {
         res.status(400).send('Missing issue or repo')
         return
