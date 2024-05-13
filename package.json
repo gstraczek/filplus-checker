@@ -10,7 +10,8 @@
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/",
     "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --omit=dev && strip ./node_modules/canvas/build/Release/librsvg-2.so.2 && rm -rf ./node_modules/chart.js/dist/docs && zip -r index.zip .",
-    "format": "prettier --write --ext ts src/"
+    "format": "prettier --write src/**/*.ts && prettier --write src/*.ts && prettier --write tests/**/*.ts && prettier --write tests/*.ts",
+    "format:nofix": "prettier --write src/**/*.ts && prettier --write src/*.ts && prettier --write tests/**/*.ts && prettier --write tests/*.ts"
   },
   "repository": {
     "type": "git",
@@ -34,6 +35,7 @@
     "@types/pg": "^8.6.5",
     "@typescript-eslint/eslint-plugin": "^5.45.0",
     "eslint": "^8.28.0",
+    "eslint-config-prettier": "^9.1.0",
     "eslint-config-standard-with-typescript": "^23.0.0",
     "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-n": "^15.5.1",

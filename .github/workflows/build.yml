@@ -26,7 +26,7 @@ jobs:
       - run: npm run build
       - run: npm run lint:nofix
       - name: Check Prettier Formatting
-        run: npx prettier --check src/**/*.ts && prettier --write tests/**/*.ts"
+        run: npm run format:nofix
 
       - name: Setup postgreSQL
         uses: harmon758/postgresql-action@v1

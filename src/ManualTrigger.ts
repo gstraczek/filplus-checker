@@ -8,7 +8,7 @@ import pino from 'pino'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import * as dotenv from 'dotenv'
 
-export async function manualTrigger (
+export async function manualTrigger(
   event: APIGatewayProxyEventV2,
   _: Context
 ): Promise<APIGatewayProxyResult> {

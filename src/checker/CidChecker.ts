@@ -71,7 +71,7 @@ export default class CidChecker {
   [^1]: To manually trigger this report, add a comment with text \`checker:manualTrigger\`
   `
 
-  private static getErrorContent (message: string): string {
+  private static getErrorContent(message: string): string {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
@@ -79,8 +79,8 @@ export default class CidChecker {
   //                                                 from client_mapping
   //                                                 where client_address = ANY ($1)`
   private static readonly issueApplicationInfoCache: Map<
-  string,
-  ApplicationInfo | null
+    string,
+    ApplicationInfo | null
   > = new Map()
 
   private static readonly ProviderDistributionQuery = `
@@ -149,7 +149,7 @@ export default class CidChecker {
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
-  public constructor (
+  public constructor(
     private readonly sql: Pool,
     public readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
@@ -158,7 +158,7 @@ export default class CidChecker {
     private readonly allocationBotId: number
   ) {}
 
-  private getClientAddress (issue: Issue): string | undefined {
+  private getClientAddress(issue: Issue): string | undefined {
     const { address } = parseIssue(issue.body ?? '')
     if (address == null || address[0] !== 'f') {
       this.logger.warn('Could not find address in issue %s', issue.number)
@@ -168,7 +168,7 @@ export default class CidChecker {
     return address
   }
 
-  private static getCurrentEpoch (): number {
+  private static getCurrentEpoch(): number {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
@@ -177,7 +177,7 @@ export default class CidChecker {
   //  return result.rows.map((row: any) => row.client)
   // }
 
-  private async getFirstClientByProviders (
+  private async getFirstClientByProviders(
     providers: string[]
   ): Promise<Map<string, string>> {
     const params = []
@@ -193,7 +193,7 @@ export default class CidChecker {
       async () => await this.sql.query(firstClientQuery, providers),
       { retries: 3 }
     )
-    const rows: Array<{ provider: string, client_address: string }> =
+    const rows: Array<{ provider: string; client_address: string }> =
       queryResult.rows
     const result = new Map<string, string>()
     for (const row of rows) {
@@ -202,7 +202,7 @@ export default class CidChecker {
     return result
   }
 
-  private async getStorageProviderDistribution (
+  private async getStorageProviderDistribution(
     clients: string[]
   ): Promise<ProviderDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
@@ -230,7 +230,7 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getReplicationDistribution (
+  private async getReplicationDistribution(
     clients: string[]
   ): Promise<ReplicationDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
@@ -258,7 +258,7 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getCidSharing (clients: string[]): Promise<CidSharing[]> {
+  private async getCidSharing(clients: string[]): Promise<CidSharing[]> {
     this.logger.info({ clients }, 'Getting cid sharing')
     const queryResult = await retry(
       async () => await this.sql.query(CidChecker.CidSharingQuery, [clients]),
@@ -269,7 +269,7 @@ export default class CidChecker {
     return sharing
   }
 
-  private async uploadFile (
+  private async uploadFile(
     path: string,
     base64Content: string,
     commitMessage: string
@@ -359,7 +359,7 @@ export default class CidChecker {
     }
   }
 
-  private getImageForReplicationDistribution (
+  private getImageForReplicationDistribution(
     replicationDistributions: ReplicationDistribution[],
     colorThreshold: number
   ): string {
@@ -410,7 +410,7 @@ export default class CidChecker {
     })
   }
 
-  private getImageForProviderDistribution (
+  private getImageForProviderDistribution(
     providerDistributions: ProviderDistributionWithLocation[]
   ): string {
     const geoMapEntries: GeoMapEntry[] = []
@@ -428,7 +428,7 @@ export default class CidChecker {
     return GeoMap.getImage(geoMapEntries)
   }
 
-  private async findApplicationInfoForClient (
+  private async findApplicationInfoForClient(
     client: string
   ): Promise<ApplicationInfo | null> {
     if (CidChecker.issueApplicationInfoCache.has(client)) {
@@ -464,12 +464,12 @@ export default class CidChecker {
     return result
   }
 
-  private static linkifyAddress (address: string): string {
+  private static linkifyAddress(address: string): string {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
   }
 
-  private static linkifyApplicationInfo (
+  private static linkifyApplicationInfo(
     applicationInfo: ApplicationInfo | null
   ): string {
     return applicationInfo != null
@@ -479,7 +479,7 @@ export default class CidChecker {
       : 'Unknown'
   }
 
-  private async getNumberOfAllocations (
+  private async getNumberOfAllocations(
     issue: Issue,
     repo: Repository
   ): Promise<number> {
@@ -491,7 +491,7 @@ export default class CidChecker {
     ).length
   }
 
-  private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
+  private async getIpFromMultiaddr(multiAddr: string): Promise<string[]> {
     const m = new Multiaddr(Buffer.from(multiAddr, 'base64'))
     const address = m.nodeAddress().address
     const proto = m.protos()[0].name
@@ -509,7 +509,7 @@ export default class CidChecker {
     }
   }
 
-  private async getMinerInfo (miner: string): Promise<MinerInfo> {
+  private async getMinerInfo(miner: string): Promise<MinerInfo> {
     this.logger.info({ miner }, 'Getting miner info')
     return await retry(
       async () => {
@@ -525,7 +525,7 @@ export default class CidChecker {
     )
   }
 
-  private static renderApprovers (approvers: Array<[string, number]>): string {
+  private static renderApprovers(approvers: Array<[string, number]>): string {
     return approvers
       .map(([name, count]) => `${wrapInCode(count.toString())}${name}`)
       .join('<br/>')
@@ -533,7 +533,7 @@ export default class CidChecker {
 
   private static readonly prCache = new Map<number, any>()
 
-  private async getRecordByPR (
+  private async getRecordByPR(
     prNumber: number,
     repo: Repository
   ): Promise<DatacapAllocation> {
@@ -570,7 +570,7 @@ export default class CidChecker {
     return outRecord
   }
 
-  private async getIssueForRecord (
+  private async getIssueForRecord(
     record: DatacapAllocation,
     repo: Repository
   ): Promise<Issue> {
@@ -642,24 +642,24 @@ export default class CidChecker {
   }
 
   private static readonly commentsCache = new Map<
-  string,
-  Array<{
-    body?: string
-    user: { login: string | undefined, id: number } | undefined | null
-    performed_via_github_app?: { id: number } | undefined | null
-  }>
+    string,
+    Array<{
+      body?: string
+      user: { login: string | undefined; id: number } | undefined | null
+      performed_via_github_app?: { id: number } | undefined | null
+    }>
   >()
 
-  private async getComments (
+  private async getComments(
     issueNumber: number,
     repo: Repository
   ): Promise<
     Array<{
       body?: string
-      user: { login: string | undefined, id: number } | undefined | null
+      user: { login: string | undefined; id: number } | undefined | null
       performed_via_github_app?: { id: number } | undefined | null
     }>
-    > {
+  > {
     const key = `${repo.owner.login}/${repo.name}/${issueNumber}`
     if (CidChecker.commentsCache.has(key)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
@@ -709,7 +709,7 @@ export default class CidChecker {
     return comments
   }
 
-  private async getApprovers (
+  private async getApprovers(
     issueNumber: number,
     repo: Repository
   ): Promise<Array<[string, number]>> {
@@ -728,7 +728,7 @@ export default class CidChecker {
     return [...approvers.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }
 
-  private async getLocation (provider: string): Promise<Location | null> {
+  private async getLocation(provider: string): Promise<Location | null> {
     const minerInfo = await this.getMinerInfo(provider)
     if (minerInfo.Multiaddrs == null || minerInfo.Multiaddrs.length === 0) {
       return null
@@ -774,7 +774,7 @@ export default class CidChecker {
     return null
   }
 
-  public async checkFromPR (
+  public async checkFromPR(
     pr: PullRequestReviewCommentCreatedEvent,
     criterias: Criteria[],
     otherAddress: string[] = []
@@ -788,8 +788,8 @@ export default class CidChecker {
     )
   }
 
-  public async check (
-    event: { issue: Issue, repository: Repository },
+  public async check(
+    event: { issue: Issue; repository: Repository },
     criterias: Criteria[] = [
       {
         maxProviderDealPercentage: 0.25,
@@ -949,11 +949,11 @@ export default class CidChecker {
             otherApplication?.issueNumber == null
               ? 'Unknown'
               : CidChecker.renderApprovers(
-                await this.getApprovers(
-                  parseInt(otherApplication.issueNumber),
-                  repository
+                  await this.getApprovers(
+                    parseInt(otherApplication.issueNumber),
+                    repository
+                  )
                 )
-              )
         }
       })
     )
@@ -1294,9 +1294,9 @@ export default class CidChecker {
     return [summary.join('\n'), joinedContent]
   }
 
-  private async uploadReport (
+  private async uploadReport(
     joinedContent: string,
-    event: { issue: Issue, repository: Repository }
+    event: { issue: Issue; repository: Repository }
   ): Promise<string> {
     const { issue, repository } = event
     const logger = this.logger.child({ issueNumber: issue.number })

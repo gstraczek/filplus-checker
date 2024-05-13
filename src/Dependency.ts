@@ -4,7 +4,7 @@ import CidChecker, { FileUploadConfig } from './checker/CidChecker'
 import { Octokit } from '@octokit/core'
 
 export const pool = new Pool()
-export function getCidChecker (logger: Logger, octo?: Octokit): CidChecker {
+export function getCidChecker(logger: Logger, octo?: Octokit): CidChecker {
   if (
     process.env.UPLOAD_REPO_OWNER === undefined ||
     process.env.UPLOAD_REPO_NAME === undefined ||
