@@ -1,4 +1,8 @@
-import { Issue, Repository, PullRequestReviewCommentCreatedEvent } from '@octokit/webhooks-types'
+import {
+  Issue,
+  Repository,
+  PullRequestReviewCommentCreatedEvent
+} from '@octokit/webhooks-types'
 import { Pool } from 'pg'
 import {
   ApplicationInfo,
@@ -14,7 +18,12 @@ import {
   IpInfoResponse,
   GetVerifiedClientResponse
 } from './Types'
-import { generateGfmTable, escape, generateLink, wrapInCode } from './MarkdownUtils'
+import {
+  generateGfmTable,
+  escape,
+  generateLink,
+  wrapInCode
+} from './MarkdownUtils'
 import * as fs from 'fs'
 import { dirname, join as pathJoin } from 'path'
 import xbytes from 'xbytes'
@@ -61,14 +70,17 @@ export default class CidChecker {
   [^1]: To manually trigger this report, add a comment with text \`checker:manualTrigger\`
   `
 
-  private static getErrorContent (message: string): string {
+  private static getErrorContent(message: string): string {
     return CidChecker.ErrorTemplate.replace('{message}', message)
   }
 
   // private static readonly GetClientShortIdQuery = `SELECT client, client_address
   //                                                 from client_mapping
   //                                                 where client_address = ANY ($1)`
-  private static readonly issueApplicationInfoCache: Map<string, ApplicationInfo | null> = new Map()
+  private static readonly issueApplicationInfoCache: Map<
+    string,
+    ApplicationInfo | null
+  > = new Map()
   private static readonly ProviderDistributionQuery = `
       WITH miner_pieces AS (SELECT provider,
                                    piece_cid,
@@ -135,16 +147,16 @@ export default class CidChecker {
       GROUP BY client_address
       ORDER BY total_deal_size DESC`
 
-  public constructor (
+  public constructor(
     private readonly sql: Pool,
     public readonly octokit: Octokit,
     private readonly fileUploadConfig: FileUploadConfig,
     private readonly logger: Logger,
     private readonly ipinfoToken: string,
-    private readonly allocationBotId: number) {
-  }
+    private readonly allocationBotId: number
+  ) {}
 
-  private getClientAddress (issue: Issue): string | undefined {
+  private getClientAddress(issue: Issue): string | undefined {
     const { address } = parseIssue(issue.body ?? '')
     if (address == null || address[0] !== 'f') {
       this.logger.warn('Could not find address in issue %s', issue.number)
@@ -154,7 +166,7 @@ export default class CidChecker {
     return address
   }
 
-  private static getCurrentEpoch (): number {
+  private static getCurrentEpoch(): number {
     return Math.floor((Date.now() / 1000 - 1598306400) / 30)
   }
 
@@ -163,16 +175,24 @@ export default class CidChecker {
   //  return result.rows.map((row: any) => row.client)
   // }
 
-  private async getFirstClientByProviders (providers: string[]): Promise<Map<string, string>> {
+  private async getFirstClientByProviders(
+    providers: string[]
+  ): Promise<Map<string, string>> {
     const params = []
     for (let i = 1; i <= providers.length; i++) {
       params.push('$' + i.toString())
     }
-    const firstClientQuery = 'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN (' +
-      params.join(', ') + ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
+    const firstClientQuery =
+      'WITH mapping AS (SELECT DISTINCT ON (provider) provider, client FROM current_state WHERE verified_deal = true AND sector_start_epoch > 0 AND provider IN (' +
+      params.join(', ') +
+      ') ORDER BY provider, sector_start_epoch ASC) SELECT provider, client_address FROM mapping, client_mapping WHERE mapping.client = client_mapping.client'
     this.logger.info({ firstClientQuery, providers })
-    const queryResult = await retry(async () => await this.sql.query(firstClientQuery, providers), { retries: 3 })
-    const rows: Array<{ provider: string, client_address: string }> = queryResult.rows
+    const queryResult = await retry(
+      async () => await this.sql.query(firstClientQuery, providers),
+      { retries: 3 }
+    )
+    const rows: Array<{ provider: string; client_address: string }> =
+      queryResult.rows
     const result = new Map<string, string>()
     for (const row of rows) {
       result.set(row.provider, row.client_address)
@@ -180,14 +200,27 @@ export default class CidChecker {
     return result
   }
 
-  private async getStorageProviderDistribution (clients: string[]): Promise<ProviderDistribution[]> {
+  private async getStorageProviderDistribution(
+    clients: string[]
+  ): Promise<ProviderDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    this.logger.info({ clients, currentEpoch }, 'Getting storage provider distribution')
-    const queryResult = await retry(async () => await this.sql.query(
-      CidChecker.ProviderDistributionQuery,
-      [clients, currentEpoch]), { retries: 3 })
+    this.logger.info(
+      { clients, currentEpoch },
+      'Getting storage provider distribution'
+    )
+    const queryResult = await retry(
+      async () =>
+        await this.sql.query(CidChecker.ProviderDistributionQuery, [
+          clients,
+          currentEpoch
+        ]),
+      { retries: 3 }
+    )
     const distributions = queryResult.rows as ProviderDistribution[]
-    const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
+    const total = distributions.reduce(
+      (acc, cur) => acc + parseFloat(cur.total_deal_size),
+      0
+    )
     for (const distribution of distributions) {
       distribution.percentage = parseFloat(distribution.total_deal_size) / total
     }
@@ -195,14 +228,27 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getReplicationDistribution (clients: string[]): Promise<ReplicationDistribution[]> {
+  private async getReplicationDistribution(
+    clients: string[]
+  ): Promise<ReplicationDistribution[]> {
     const currentEpoch = CidChecker.getCurrentEpoch()
-    this.logger.info({ clients, currentEpoch }, 'Getting replication distribution')
-    const queryResult = await retry(async () => await this.sql.query(
-      CidChecker.ReplicaDistributionQuery,
-      [clients, currentEpoch]), { retries: 3 })
+    this.logger.info(
+      { clients, currentEpoch },
+      'Getting replication distribution'
+    )
+    const queryResult = await retry(
+      async () =>
+        await this.sql.query(CidChecker.ReplicaDistributionQuery, [
+          clients,
+          currentEpoch
+        ]),
+      { retries: 3 }
+    )
     const distributions = queryResult.rows as ReplicationDistribution[]
-    const total = distributions.reduce((acc, cur) => acc + parseFloat(cur.total_deal_size), 0)
+    const total = distributions.reduce(
+      (acc, cur) => acc + parseFloat(cur.total_deal_size),
+      0
+    )
     for (const distribution of distributions) {
       distribution.percentage = parseFloat(distribution.total_deal_size) / total
     }
@@ -210,20 +256,27 @@ export default class CidChecker {
     return distributions
   }
 
-  private async getCidSharing (clients: string[]): Promise<CidSharing[]> {
+  private async getCidSharing(clients: string[]): Promise<CidSharing[]> {
     this.logger.info({ clients }, 'Getting cid sharing')
-    const queryResult = await retry(async () => await this.sql.query(
-      CidChecker.CidSharingQuery,
-      [clients]), { retries: 3 })
+    const queryResult = await retry(
+      async () => await this.sql.query(CidChecker.CidSharingQuery, [clients]),
+      { retries: 3 }
+    )
     const sharing = queryResult.rows as CidSharing[]
     this.logger.debug({ sharing }, 'Got cid sharing')
     return sharing
   }
 
-  private async uploadFile (path: string, base64Content: string, commitMessage: string): Promise<[download_url: string, html_url: string]> {
+  private async uploadFile(
+    path: string,
+    base64Content: string,
+    commitMessage: string
+  ): Promise<[download_url: string, html_url: string]> {
     const { local, owner, repo } = this.fileUploadConfig
-    type Params = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['parameters']
-    type Response = RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['response']
+    type Params =
+      RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['parameters']
+    type Response =
+      RestEndpointMethodTypes['repos']['createOrUpdateFileContents']['response']
     const params: Params = {
       owner,
       repo,
@@ -237,12 +290,15 @@ export default class CidChecker {
       }
     }
 
-    this.logger.info({
-      owner: params.owner,
-      repo: params.repo,
-      path: params.path,
-      message: params.message
-    }, 'Uploading file')
+    this.logger.info(
+      {
+        owner: params.owner,
+        repo: params.repo,
+        path: params.path,
+        message: params.message
+      },
+      'Uploading file'
+    )
 
     if (local) {
       const base = dirname(path)
@@ -250,7 +306,10 @@ export default class CidChecker {
       const fullURL = this.fileUploadConfig.localBaseURL + path
       try {
         fs.mkdirSync(fullPath, { recursive: true })
-        fs.writeFileSync(pathJoin(local, path), Buffer.from(base64Content, 'base64'))
+        fs.writeFileSync(
+          pathJoin(local, path),
+          Buffer.from(base64Content, 'base64')
+        )
         return [fullURL, fullURL]
       } catch (e) {
         this.logger.error('Error uploading file %s: %s', params.path, e)
@@ -259,42 +318,67 @@ export default class CidChecker {
     }
 
     try {
-      const response: Response = await retry(async () => {
-        try {
-          return await this.octokit.request('PUT /repos/{owner}/{repo}/contents/{path}', params)
-        } catch (e: any) {
-          this.logger.error('Error uploading file', e.toString())
-          throw e
-        }
-      }, { retries: 3 })
-      this.logger.info({
-        owner: params.owner,
-        repo: params.repo,
-        path: params.path,
-        message: params.message
-      }, 'Uploaded file')
+      const response: Response = await retry(
+        async () => {
+          try {
+            return await this.octokit.request(
+              'PUT /repos/{owner}/{repo}/contents/{path}',
+              params
+            )
+          } catch (e: any) {
+            this.logger.error('Error uploading file', e.toString())
+            throw e
+          }
+        },
+        { retries: 3 }
+      )
+      this.logger.info(
+        {
+          owner: params.owner,
+          repo: params.repo,
+          path: params.path,
+          message: params.message
+        },
+        'Uploaded file'
+      )
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      return [response.data.content!.download_url!, response.data.content!.html_url!]
+      return [
+        response.data.content!.download_url!,
+        response.data.content!.html_url!
+      ]
     } catch (error: any) {
-      this.logger.error('Error uploading file %s: %s', params.path, error.message)
+      this.logger.error(
+        'Error uploading file %s: %s',
+        params.path,
+        error.message
+      )
       return ['', '']
     }
   }
 
-  private getImageForReplicationDistribution (replicationDistributions: ReplicationDistribution[], colorThreshold: number): string {
+  private getImageForReplicationDistribution(
+    replicationDistributions: ReplicationDistribution[],
+    colorThreshold: number
+  ): string {
     const replicationEntries: BarChartEntry[] = []
 
     for (const distribution of replicationDistributions) {
       replicationEntries.push({
         yValue: parseFloat(distribution.unique_data_size),
         xValue: distribution.num_of_replicas,
-        barLabel: xbytes(parseFloat(distribution.unique_data_size), { iec: true }),
+        barLabel: xbytes(parseFloat(distribution.unique_data_size), {
+          iec: true
+        }),
         label: distribution.num_of_replicas.toString()
       })
     }
 
-    const backgroundColors = replicationEntries.map((row) => row.xValue <= colorThreshold ? RED : GREEN)
-    const borderColors = replicationEntries.map((row) => row.xValue <= colorThreshold ? RED : GREEN)
+    const backgroundColors = replicationEntries.map((row) =>
+      row.xValue <= colorThreshold ? RED : GREEN
+    )
+    const borderColors = replicationEntries.map((row) =>
+      row.xValue <= colorThreshold ? RED : GREEN
+    )
 
     // not sure why typescript is complaining here on labels
     // ive nested the Partial as well and its still complaining
@@ -304,7 +388,11 @@ export default class CidChecker {
       labels: {
         generateLabels: (_: Chart<'bar'>) => [
           { text: 'low provider count', fillStyle: RED, strokeStyle: '#fff' },
-          { text: 'healthy provider count', fillStyle: GREEN, strokeStyle: '#fff' }
+          {
+            text: 'healthy provider count',
+            fillStyle: GREEN,
+            strokeStyle: '#fff'
+          }
         ]
       }
     }
@@ -319,7 +407,9 @@ export default class CidChecker {
     })
   }
 
-  private getImageForProviderDistribution (providerDistributions: ProviderDistributionWithLocation[]): string {
+  private getImageForProviderDistribution(
+    providerDistributions: ProviderDistributionWithLocation[]
+  ): string {
     const geoMapEntries: GeoMapEntry[] = []
 
     for (const distribution of providerDistributions) {
@@ -335,20 +425,31 @@ export default class CidChecker {
     return GeoMap.getImage(geoMapEntries)
   }
 
-  private async findApplicationInfoForClient (client: string): Promise<ApplicationInfo | null> {
+  private async findApplicationInfoForClient(
+    client: string
+  ): Promise<ApplicationInfo | null> {
     if (CidChecker.issueApplicationInfoCache.has(client)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.issueApplicationInfoCache.get(client)!
     }
     this.logger.info({ client }, 'Finding application info for client')
-    const response = await retry(async () => await axios.get(
-      `https://api.datacapstats.io/api/getVerifiedClients?limit=10&page=1&filter=${client}`), { retries: 6 })
+    const response = await retry(
+      async () =>
+        await axios.get(
+          `https://api.datacapstats.io/api/getVerifiedClients?limit=10&page=1&filter=${client}`
+        ),
+      { retries: 6 }
+    )
     const data: GetVerifiedClientResponse = response.data
     if (data.data.length === 0) {
       CidChecker.issueApplicationInfoCache.set(client, null)
       return null
     }
-    const primary = data.data.reduce((prev, curr) => parseInt(prev.initialAllowance) > parseInt(curr.initialAllowance) ? prev : curr)
+    const primary = data.data.reduce((prev, curr) =>
+      parseInt(prev.initialAllowance) > parseInt(curr.initialAllowance)
+        ? prev
+        : curr
+    )
     const result = {
       clientAddress: client,
       organizationName: (primary.name ?? '') + (primary.orgName ?? ''),
@@ -360,25 +461,34 @@ export default class CidChecker {
     return result
   }
 
-  private static linkifyAddress (address: string): string {
+  private static linkifyAddress(address: string): string {
     // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     return `[${address.match(/.{1,41}/g)!.join('<br/>')}](https://filfox.info/en/address/${address})`
   }
 
-  private static linkifyApplicationInfo (applicationInfo: ApplicationInfo | null): string {
+  private static linkifyApplicationInfo(
+    applicationInfo: ApplicationInfo | null
+  ): string {
     return applicationInfo != null
-      ? (applicationInfo.url != null
-          ? `[${escape(applicationInfo.organizationName)}](${applicationInfo.url})`
-          : wrapInCode(applicationInfo.organizationName))
+      ? applicationInfo.url != null
+        ? `[${escape(applicationInfo.organizationName)}](${applicationInfo.url})`
+        : wrapInCode(applicationInfo.organizationName)
       : 'Unknown'
   }
 
-  private async getNumberOfAllocations (issue: Issue, repo: Repository): Promise<number> {
+  private async getNumberOfAllocations(
+    issue: Issue,
+    repo: Repository
+  ): Promise<number> {
     const comments = await this.getComments(issue.number, repo)
-    return comments.filter((comment) => comment.performed_via_github_app?.id === this.allocationBotId && comment.body?.includes('## DataCap Allocation requested')).length
+    return comments.filter(
+      (comment) =>
+        comment.performed_via_github_app?.id === this.allocationBotId &&
+        comment.body?.includes('## DataCap Allocation requested')
+    ).length
   }
 
-  private async getIpFromMultiaddr (multiAddr: string): Promise<string[]> {
+  private async getIpFromMultiaddr(multiAddr: string): Promise<string[]> {
     const m = new Multiaddr(Buffer.from(multiAddr, 'base64'))
     const address = m.nodeAddress().address
     const proto = m.protos()[0].name
@@ -396,28 +506,34 @@ export default class CidChecker {
     }
   }
 
-  private async getMinerInfo (miner: string): Promise<MinerInfo> {
+  private async getMinerInfo(miner: string): Promise<MinerInfo> {
     this.logger.info({ miner }, 'Getting miner info')
-    return await retry(async () => {
-      const response = await axios.post('https://api.node.glif.io/rpc/v0', {
-        jsonrpc: '2.0',
-        id: 1,
-        method: 'Filecoin.StateMinerInfo',
-        params: [
-          miner, null
-        ]
-      })
-      return response.data.result
-    }, { retries: 3 })
+    return await retry(
+      async () => {
+        const response = await axios.post('https://api.node.glif.io/rpc/v0', {
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'Filecoin.StateMinerInfo',
+          params: [miner, null]
+        })
+        return response.data.result
+      },
+      { retries: 3 }
+    )
   }
 
-  private static renderApprovers (approvers: Array<[string, number]>): string {
-    return approvers.map(([name, count]) => `${wrapInCode(count.toString())}${name}`).join('<br/>')
+  private static renderApprovers(approvers: Array<[string, number]>): string {
+    return approvers
+      .map(([name, count]) => `${wrapInCode(count.toString())}${name}`)
+      .join('<br/>')
   }
 
   private static readonly prCache = new Map<number, any>()
 
-  private async getRecordByPR (prNumber: number, repo: Repository): Promise<DatacapAllocation> {
+  private async getRecordByPR(
+    prNumber: number,
+    repo: Repository
+  ): Promise<DatacapAllocation> {
     if (CidChecker.prCache.has(prNumber)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.prCache.get(prNumber)!
@@ -429,7 +545,14 @@ export default class CidChecker {
       pull_number: prNumber
     }
     this.logger.info(params, 'Getting PR')
-    const response: any | null = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/pulls/{pull_number}/files', params), { retries: 3 })
+    const response: any | null = await retry(
+      async () =>
+        await this.octokit.request(
+          'GET /repos/{owner}/{repo}/pulls/{pull_number}/files',
+          params
+        ),
+      { retries: 3 }
+    )
     if (response == null) {
       throw new Error('Failed to get PR')
     }
@@ -444,7 +567,10 @@ export default class CidChecker {
     return outRecord
   }
 
-  private async getIssueForRecord (record: DatacapAllocation, repo: Repository): Promise<Issue> {
+  private async getIssueForRecord(
+    record: DatacapAllocation,
+    repo: Repository
+  ): Promise<Issue> {
     const issueNum = record['Issue Number']
 
     const params = {
@@ -454,7 +580,14 @@ export default class CidChecker {
     }
     // type IssueResponse = RestEndpointMethodTypes['issues']['get']['response']
 
-    const response: any = await retry(async () => await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issueNum}', params), { retries: 3 })
+    const response: any = await retry(
+      async () =>
+        await this.octokit.request(
+          'GET /repos/{owner}/{repo}/issues/{issueNum}',
+          params
+        ),
+      { retries: 3 }
+    )
 
     const ri: Issue = {
       number: response.data.number,
@@ -503,24 +636,34 @@ export default class CidChecker {
     return ri
   }
 
-  private static readonly commentsCache = new Map<string, Array<{
-    body?: string
-    user: { login: string | undefined, id: number } | undefined | null
-    performed_via_github_app?: { id: number } | undefined | null
-  }>>()
+  private static readonly commentsCache = new Map<
+    string,
+    Array<{
+      body?: string
+      user: { login: string | undefined; id: number } | undefined | null
+      performed_via_github_app?: { id: number } | undefined | null
+    }>
+  >()
 
-  private async getComments (issueNumber: number, repo: Repository): Promise<Array<{
-    body?: string
-    user: { login: string | undefined, id: number } | undefined | null
-    performed_via_github_app?: { id: number } | undefined | null
-  }>> {
+  private async getComments(
+    issueNumber: number,
+    repo: Repository
+  ): Promise<
+    Array<{
+      body?: string
+      user: { login: string | undefined; id: number } | undefined | null
+      performed_via_github_app?: { id: number } | undefined | null
+    }>
+  > {
     const key = `${repo.owner.login}/${repo.name}/${issueNumber}`
     if (CidChecker.commentsCache.has(key)) {
       // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
       return CidChecker.commentsCache.get(key)!
     }
-    type Params = RestEndpointMethodTypes['issues']['listComments']['parameters']
-    type Response = RestEndpointMethodTypes['issues']['listComments']['response']
+    type Params =
+      RestEndpointMethodTypes['issues']['listComments']['parameters']
+    type Response =
+      RestEndpointMethodTypes['issues']['listComments']['response']
     let page = 1
     const comments = []
     while (true) {
@@ -532,16 +675,22 @@ export default class CidChecker {
         page
       }
       this.logger.info(params, 'Getting comments for issue')
-      const response: Response | null = await retry(async () => {
-        try {
-          return await this.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}/comments', params)
-        } catch (e) {
-          if ((e as any).status === 404) {
-            return null
+      const response: Response | null = await retry(
+        async () => {
+          try {
+            return await this.octokit.request(
+              'GET /repos/{owner}/{repo}/issues/{issue_number}/comments',
+              params
+            )
+          } catch (e) {
+            if ((e as any).status === 404) {
+              return null
+            }
+            throw e
           }
-          throw e
-        }
-      }, { retries: 3 })
+        },
+        { retries: 3 }
+      )
       if (response != null) {
         comments.push(...response.data)
       }
@@ -555,12 +704,17 @@ export default class CidChecker {
     return comments
   }
 
-  private async getApprovers (issueNumber: number, repo: Repository): Promise<Array<[string, number]>> {
+  private async getApprovers(
+    issueNumber: number,
+    repo: Repository
+  ): Promise<Array<[string, number]>> {
     const approvers = new Map<string, number>()
     const comments = await this.getComments(issueNumber, repo)
     for (const comment of comments) {
-      if (comment.body?.startsWith('## Request Approved') === true ||
-        comment.body?.startsWith('## Request Proposed') === true) {
+      if (
+        comment.body?.startsWith('## Request Approved') === true ||
+        comment.body?.startsWith('## Request Proposed') === true
+      ) {
         const approver = comment.user?.login ?? 'Unknown'
         const count = approvers.get(approver) ?? 0
         approvers.set(approver, count + 1)
@@ -569,7 +723,7 @@ export default class CidChecker {
     return [...approvers.entries()].sort((a, b) => a[0].localeCompare(b[0]))
   }
 
-  private async getLocation (provider: string): Promise<Location | null> {
+  private async getLocation(provider: string): Promise<Location | null> {
     const minerInfo = await this.getMinerInfo(provider)
     if (minerInfo.Multiaddrs == null || minerInfo.Multiaddrs.length === 0) {
       return null
@@ -587,10 +741,15 @@ export default class CidChecker {
     }
     for (const ip of ips) {
       this.logger.info({ ip }, 'Getting location for IP')
-      const data = await retry(async () => {
-        const response = await axios.get(`https://ipinfo.io/${ip}?token=${this.ipinfoToken}`)
-        return response.data
-      }, { retries: 3 }) as IpInfoResponse
+      const data = (await retry(
+        async () => {
+          const response = await axios.get(
+            `https://ipinfo.io/${ip}?token=${this.ipinfoToken}`
+          )
+          return response.data
+        },
+        { retries: 3 }
+      )) as IpInfoResponse
       if (data.bogon === true) {
         continue
       }
@@ -599,26 +758,43 @@ export default class CidChecker {
         city: data.city,
         country: data.country,
         region: data.region,
-        latitude: (data.loc != null) ? parseFloat(data.loc.split(',')[0]) : undefined,
-        longitude: (data.loc != null) ? parseFloat(data.loc.split(',')[1]) : undefined,
-        orgName: data.org != null ? data.org.split(' ').slice(1).join(' ') : 'Unknown'
+        latitude:
+          data.loc != null ? parseFloat(data.loc.split(',')[0]) : undefined,
+        longitude:
+          data.loc != null ? parseFloat(data.loc.split(',')[1]) : undefined,
+        orgName:
+          data.org != null ? data.org.split(' ').slice(1).join(' ') : 'Unknown'
       }
     }
     return null
   }
 
-  public async checkFromPR (pr: PullRequestReviewCommentCreatedEvent, criterias: Criteria[], otherAddress: string[] = []): Promise<[summary: string, content: string | undefined]> {
+  public async checkFromPR(
+    pr: PullRequestReviewCommentCreatedEvent,
+    criterias: Criteria[],
+    otherAddress: string[] = []
+  ): Promise<[summary: string, content: string | undefined]> {
     const record = await this.getRecordByPR(pr.pull_request.id, pr.repository)
     const issue = await this.getIssueForRecord(record, pr.repository)
-    return await this.check({ issue, repository: pr.repository }, criterias, otherAddress)
+    return await this.check(
+      { issue, repository: pr.repository },
+      criterias,
+      otherAddress
+    )
   }
 
-  public async check (event: { issue: Issue, repository: Repository }, criterias: Criteria[] = [{
-    maxProviderDealPercentage: 0.25,
-    maxDuplicationPercentage: 0.20,
-    maxPercentageForLowReplica: 0.25,
-    lowReplicaThreshold: 3
-  }], otherAddresses: string[] = []): Promise<[summary: string, content: string | undefined]> {
+  public async check(
+    event: { issue: Issue; repository: Repository },
+    criterias: Criteria[] = [
+      {
+        maxProviderDealPercentage: 0.25,
+        maxDuplicationPercentage: 0.2,
+        maxPercentageForLowReplica: 0.25,
+        lowReplicaThreshold: 3
+      }
+    ],
+    otherAddresses: string[] = []
+  ): Promise<[summary: string, content: string | undefined]> {
     const { issue, repository } = event
     let logger = this.logger.child({ issueNumber: issue.number })
     logger.info('Checking issue')
@@ -626,15 +802,28 @@ export default class CidChecker {
     const isEarlyAllocation = criterias.length > allocations
     logger.info({ allocations }, 'Retrieved number of previous allocations')
     if (allocations === 0) {
-      return [CidChecker.getErrorContent('There is no previous allocation for this issue.'), undefined]
+      return [
+        CidChecker.getErrorContent(
+          'There is no previous allocation for this issue.'
+        ),
+        undefined
+      ]
     }
     const address = this.getClientAddress(issue)
     if (address == null) {
-      return [CidChecker.getErrorContent('No client address found for this issue.'), undefined]
+      return [
+        CidChecker.getErrorContent('No client address found for this issue.'),
+        undefined
+      ]
     }
     const applicationInfo = await this.findApplicationInfoForClient(address)
     if (applicationInfo == null) {
-      return [CidChecker.getErrorContent('No application info found for this issue on https://datacapstats.io/clients.'), undefined]
+      return [
+        CidChecker.getErrorContent(
+          'No application info found for this issue on https://datacapstats.io/clients.'
+        ),
+        undefined
+      ]
     }
     logger = logger.child({ clientAddress: applicationInfo.clientAddress })
     logger.info(applicationInfo, 'Retrieved application info')
@@ -644,7 +833,10 @@ export default class CidChecker {
       addressGroup.push(applicationInfo.clientAddress)
     }
     logger.info({ groups: addressGroup }, 'Retrieved address groups')
-    const criteria = criterias.length > allocations - 1 ? criterias[allocations - 1] : criterias[criterias.length - 1]
+    const criteria =
+      criterias.length > allocations - 1
+        ? criterias[allocations - 1]
+        : criterias[criterias.length - 1]
 
     // const shortIDs = await this.getClientShortIDs(addressGroup)
 
@@ -652,85 +844,138 @@ export default class CidChecker {
       await Promise.all([
         (async () => {
           const result = await this.getStorageProviderDistribution(addressGroup)
-          const providers = result.map(r => r.provider)
+          const providers = result.map((r) => r.provider)
           if (providers.length === 0) {
             return []
           }
-          const firstClientByProvider = await this.getFirstClientByProviders(providers)
+          const firstClientByProvider =
+            await this.getFirstClientByProviders(providers)
           const withLocations: ProviderDistributionWithLocation[] = []
           for (const item of result) {
             const location = await this.getLocation(item.provider)
-            const isNew = addressGroup.includes(firstClientByProvider.get(item.provider) ?? '')
+            const isNew = addressGroup.includes(
+              firstClientByProvider.get(item.provider) ?? ''
+            )
             withLocations.push({ ...item, ...location, new: isNew })
           }
-          return withLocations.sort((a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0)
+          return withLocations.sort(
+            (a, b) => a.orgName?.localeCompare(b.orgName ?? '') ?? 0
+          )
         })(),
         this.getReplicationDistribution(addressGroup),
         this.getCidSharing(addressGroup)
       ])
 
     if (providerDistributions.length === 0) {
-      return [CidChecker.getErrorContent('No active deals found for this client.'), undefined]
+      return [
+        CidChecker.getErrorContent('No active deals found for this client.'),
+        undefined
+      ]
     }
 
-    const providerDistributionRows: ProviderDistributionRow[] = providerDistributions.map(distribution => {
-      const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
-      const uniqueDataSize = xbytes(parseFloat(distribution.unique_data_size), { iec: true })
-      let location = [distribution.city, distribution.region, distribution.country].filter(x => x).join(', ')
-      if (location === '' || location == null) {
-        location = 'Unknown'
-      }
-      const orgName = distribution.orgName ?? 'Unknown'
-      return {
-        provider: generateLink(distribution.provider, `https://filfox.info/en/address/${distribution.provider}`) + (distribution.new ? '`new` ' : ''),
-        totalDealSize,
-        uniqueDataSize,
-        location: location + '<br/>' + wrapInCode(orgName),
-        percentage: `${(distribution.percentage * 100).toFixed(2)}%`,
-        duplicatePercentage: `${(distribution.duplication_percentage * 100).toFixed(2)}%`
-      }
-    })
+    const providerDistributionRows: ProviderDistributionRow[] =
+      providerDistributions.map((distribution) => {
+        const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), {
+          iec: true
+        })
+        const uniqueDataSize = xbytes(
+          parseFloat(distribution.unique_data_size),
+          { iec: true }
+        )
+        let location = [
+          distribution.city,
+          distribution.region,
+          distribution.country
+        ]
+          .filter((x) => x)
+          .join(', ')
+        if (location === '' || location == null) {
+          location = 'Unknown'
+        }
+        const orgName = distribution.orgName ?? 'Unknown'
+        return {
+          provider:
+            generateLink(
+              distribution.provider,
+              `https://filfox.info/en/address/${distribution.provider}`
+            ) + (distribution.new ? '`new` ' : ''),
+          totalDealSize,
+          uniqueDataSize,
+          location: location + '<br/>' + wrapInCode(orgName),
+          percentage: `${(distribution.percentage * 100).toFixed(2)}%`,
+          duplicatePercentage: `${(distribution.duplication_percentage * 100).toFixed(2)}%`
+        }
+      })
 
-    const replicationDistributionRows: ReplicationDistributionRow[] = replicationDistributions.map(distribution => {
-      const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), { iec: true })
-      const uniqueDataSize = xbytes(parseFloat(distribution.unique_data_size), { iec: true })
-      return {
-        numOfReplica: distribution.num_of_replicas,
-        totalDealSize,
-        uniqueDataSize,
-        percentage: `${(distribution.percentage * 100).toFixed(2)}%`
-      }
-    })
+    const replicationDistributionRows: ReplicationDistributionRow[] =
+      replicationDistributions.map((distribution) => {
+        const totalDealSize = xbytes(parseFloat(distribution.total_deal_size), {
+          iec: true
+        })
+        const uniqueDataSize = xbytes(
+          parseFloat(distribution.unique_data_size),
+          { iec: true }
+        )
+        return {
+          numOfReplica: distribution.num_of_replicas,
+          totalDealSize,
+          uniqueDataSize,
+          percentage: `${(distribution.percentage * 100).toFixed(2)}%`
+        }
+      })
 
     const cidSharingRows: CidSharingRow[] = await Promise.all(
-      cidSharing.map(
-        async (share) => {
-          const totalDealSize = xbytes(parseFloat(share.total_deal_size), { iec: true })
-          const otherApplication = await this.findApplicationInfoForClient(share.other_client_address)
-          return {
-            otherClientAddress: CidChecker.linkifyAddress(share.other_client_address),
-            totalDealSize,
-            uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
-            otherClientOrganizationName: CidChecker.linkifyApplicationInfo(otherApplication),
-            verifier: otherApplication?.issueNumber == null
+      cidSharing.map(async (share) => {
+        const totalDealSize = xbytes(parseFloat(share.total_deal_size), {
+          iec: true
+        })
+        const otherApplication = await this.findApplicationInfoForClient(
+          share.other_client_address
+        )
+        return {
+          otherClientAddress: CidChecker.linkifyAddress(
+            share.other_client_address
+          ),
+          totalDealSize,
+          uniqueCidCount: share.unique_cid_count.toLocaleString('en-US'),
+          otherClientOrganizationName:
+            CidChecker.linkifyApplicationInfo(otherApplication),
+          verifier:
+            otherApplication?.issueNumber == null
               ? 'Unknown'
-              : CidChecker.renderApprovers(await this.getApprovers(parseInt(otherApplication.issueNumber), repository))
-          }
+              : CidChecker.renderApprovers(
+                  await this.getApprovers(
+                    parseInt(otherApplication.issueNumber),
+                    repository
+                  )
+                )
         }
-      )
+      })
     )
 
-    const providerDistributionImage = this.getImageForProviderDistribution(providerDistributions)
-    const replicationDistributionImage = this.getImageForReplicationDistribution(replicationDistributions, criteria.lowReplicaThreshold)
-    const providerDistributionImageUrl = (await this.uploadFile(
-      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
-      providerDistributionImage,
-      `Upload provider distribution image for issue #${issue.number} of ${repository.full_name}`))[0]
+    const providerDistributionImage = this.getImageForProviderDistribution(
+      providerDistributions
+    )
+    const replicationDistributionImage =
+      this.getImageForReplicationDistribution(
+        replicationDistributions,
+        criteria.lowReplicaThreshold
+      )
+    const providerDistributionImageUrl = (
+      await this.uploadFile(
+        `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
+        providerDistributionImage,
+        `Upload provider distribution image for issue #${issue.number} of ${repository.full_name}`
+      )
+    )[0]
 
-    const replicationDistributionImageUrl = (await this.uploadFile(
-      `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
-      replicationDistributionImage,
-      `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`))[0]
+    const replicationDistributionImageUrl = (
+      await this.uploadFile(
+        `${repository.full_name}/issues/${issue.number}/${Date.now()}.png`,
+        replicationDistributionImage,
+        `Upload replication distribution image for issue #${issue.number} of ${repository.full_name}`
+      )
+    )[0]
 
     const content: string[] = []
     const summary: string[] = []
@@ -740,189 +985,321 @@ export default class CidChecker {
     }
     content.push('## DataCap and CID Checker Report[^1]')
     summary.push('## DataCap and CID Checker Report Summary[^1]')
-    content.push(` - Organization: ${wrapInCode(applicationInfo.organizationName)}`)
+    content.push(
+      ` - Organization: ${wrapInCode(applicationInfo.organizationName)}`
+    )
     content.push(` - Client: ${wrapInCode(applicationInfo.clientAddress)}`)
     content.push('### Approvers')
-    content.push(CidChecker.renderApprovers(await this.getApprovers(issue.number, repository)))
+    content.push(
+      CidChecker.renderApprovers(
+        await this.getApprovers(issue.number, repository)
+      )
+    )
     content.push('')
     if (addressGroup.length > 1) {
       pushBoth('### Other Addresses[^2]')
       for (const address of addressGroup) {
         if (address !== applicationInfo.clientAddress) {
-          const otherApplication = await this.findApplicationInfoForClient(address)
-          pushBoth(` - ${CidChecker.linkifyAddress(address)} - ${CidChecker.linkifyApplicationInfo(otherApplication)}`)
+          const otherApplication =
+            await this.findApplicationInfoForClient(address)
+          pushBoth(
+            ` - ${CidChecker.linkifyAddress(address)} - ${CidChecker.linkifyApplicationInfo(otherApplication)}`
+          )
           pushBoth('')
         }
       }
     }
     content.push('')
     pushBoth('### Storage Provider Distribution')
-    content.push('The below table shows the distribution of storage providers that have stored data for this client.')
+    content.push(
+      'The below table shows the distribution of storage providers that have stored data for this client.'
+    )
     content.push('')
-    content.push('If this is the first time a provider takes verified deal, it will be marked as `new`.')
+    content.push(
+      'If this is the first time a provider takes verified deal, it will be marked as `new`.'
+    )
     content.push('')
-    content.push('For most of the datacap application, below restrictions should apply.')
+    content.push(
+      'For most of the datacap application, below restrictions should apply.'
+    )
     if (isEarlyAllocation) {
       content.push('')
-      content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
+      content.push(
+        `**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`
+      )
     }
-    content.push(` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`)
-    content.push(` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationPercentage * 100).toFixed(0)}%.`)
-    content.push(' - Storage provider should have published its public IP address.')
-    content.push(' - All storage providers should be located in different regions.')
+    content.push(
+      ` - Storage provider should not exceed ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap.`
+    )
+    content.push(
+      ` - Storage provider should not be storing duplicate data for more than ${(criteria.maxDuplicationPercentage * 100).toFixed(0)}%.`
+    )
+    content.push(
+      ' - Storage provider should have published its public IP address.'
+    )
+    content.push(
+      ' - All storage providers should be located in different regions.'
+    )
     content.push('')
     let providerDistributionHealthy = true
     const providersExceedingMaxPercentage: Array<[string, number]> = []
     const providersExceedingMaxDuplication: Array<[string, number]> = []
     const providersNoIp: string[] = []
     for (const provider of providerDistributions) {
-      const providerLink = generateLink(provider.provider, `https://filfox.info/en/address/${provider.provider}`)
+      const providerLink = generateLink(
+        provider.provider,
+        `https://filfox.info/en/address/${provider.provider}`
+      )
       if (provider.percentage > criteria.maxProviderDealPercentage) {
-        logger.info({ provider: provider.provider, percentage: provider.percentage }, 'Provider exceeds max percentage')
-        content.push(emoji.get('warning') + ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`)
+        logger.info(
+          { provider: provider.provider, percentage: provider.percentage },
+          'Provider exceeds max percentage'
+        )
+        content.push(
+          emoji.get('warning') +
+            ` ${providerLink} has sealed ${(provider.percentage * 100).toFixed(2)}% of total datacap.`
+        )
         content.push('')
-        providersExceedingMaxPercentage.push([provider.provider, provider.percentage])
+        providersExceedingMaxPercentage.push([
+          provider.provider,
+          provider.percentage
+        ])
         providerDistributionHealthy = false
       }
       if (provider.duplication_percentage > criteria.maxDuplicationPercentage) {
-        logger.info({
-          provider: provider.provider,
-          duplicationFactor: provider.duplication_percentage
-        }, 'Provider exceeds max duplication percentage')
-        content.push(emoji.get('warning') + ` ${(provider.duplication_percentage * 100).toFixed(2)}% of total deal sealed by ${providerLink} are duplicate data.`)
+        logger.info(
+          {
+            provider: provider.provider,
+            duplicationFactor: provider.duplication_percentage
+          },
+          'Provider exceeds max duplication percentage'
+        )
+        content.push(
+          emoji.get('warning') +
+            ` ${(provider.duplication_percentage * 100).toFixed(2)}% of total deal sealed by ${providerLink} are duplicate data.`
+        )
         content.push('')
-        providersExceedingMaxDuplication.push([provider.provider, provider.duplication_percentage])
+        providersExceedingMaxDuplication.push([
+          provider.provider,
+          provider.duplication_percentage
+        ])
         providerDistributionHealthy = false
       }
       if (provider.country == null || provider.country === '') {
-        logger.info({ provider: provider.provider }, 'Provider does not have IP location')
-        content.push(emoji.get('warning') + ` ${providerLink} has unknown IP location.`)
+        logger.info(
+          { provider: provider.provider },
+          'Provider does not have IP location'
+        )
+        content.push(
+          emoji.get('warning') + ` ${providerLink} has unknown IP location.`
+        )
         content.push('')
         providersNoIp.push(provider.provider)
         providerDistributionHealthy = false
       }
     }
     if (providersExceedingMaxPercentage.length > 0) {
-      summary.push(emoji.get('warning') + ` ${providersExceedingMaxPercentage.length} storage providers sealed more than ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap - ` +
-        providersExceedingMaxPercentage.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
+      summary.push(
+        emoji.get('warning') +
+          ` ${providersExceedingMaxPercentage.length} storage providers sealed more than ${(criteria.maxProviderDealPercentage * 100).toFixed(0)}% of total datacap - ` +
+          providersExceedingMaxPercentage
+            .map(
+              ([provider, percentage]) =>
+                ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`
+            )
+            .join(', ')
+      )
       summary.push('')
     }
     if (providersExceedingMaxDuplication.length > 0) {
-      summary.push(emoji.get('warning') + ` ${providersExceedingMaxDuplication.length} storage providers sealed too much duplicate data - ` +
-        providersExceedingMaxDuplication.map(([provider, percentage]) => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`).join(', '))
+      summary.push(
+        emoji.get('warning') +
+          ` ${providersExceedingMaxDuplication.length} storage providers sealed too much duplicate data - ` +
+          providersExceedingMaxDuplication
+            .map(
+              ([provider, percentage]) =>
+                ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}: ${(percentage * 100).toFixed(2)}%`
+            )
+            .join(', ')
+      )
       summary.push('')
     }
     if (providersNoIp.length > 0) {
-      summary.push(emoji.get('warning') + ` ${providersNoIp.length} storage providers have unknown IP location - ` +
-        providersNoIp.map(provider => ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}`).join(', '))
+      summary.push(
+        emoji.get('warning') +
+          ` ${providersNoIp.length} storage providers have unknown IP location - ` +
+          providersNoIp
+            .map(
+              (provider) =>
+                ` ${generateLink(provider, `https://filfox.info/en/address/${provider}`)}`
+            )
+            .join(', ')
+      )
       summary.push('')
     }
-    if (new Set(providerDistributionRows.map(row => row.location)).size <= 1) {
+    if (
+      new Set(providerDistributionRows.map((row) => row.location)).size <= 1
+    ) {
       logger.info('Client has data stored in only one region')
-      pushBoth(emoji.get('warning') + ' All storage providers are located in the same region.')
+      pushBoth(
+        emoji.get('warning') +
+          ' All storage providers are located in the same region.'
+      )
       pushBoth('')
       providerDistributionHealthy = false
     }
 
     if (providerDistributionHealthy) {
-      pushBoth(emoji.get('heavy_check_mark') + ' Storage provider distribution looks healthy.')
+      pushBoth(
+        emoji.get('heavy_check_mark') +
+          ' Storage provider distribution looks healthy.'
+      )
       pushBoth('')
     }
 
-    content.push(generateGfmTable(providerDistributionRows,
-      [
+    content.push(
+      generateGfmTable(providerDistributionRows, [
         ['provider', { name: 'Provider', align: 'l' }],
         ['location', { name: 'Location', align: 'r' }],
         ['totalDealSize', { name: 'Total Deals Sealed', align: 'r' }],
         ['percentage', { name: 'Percentage', align: 'r' }],
         ['uniqueDataSize', { name: 'Unique Data', align: 'r' }],
         ['duplicatePercentage', { name: 'Duplicate Deals', align: 'r' }]
-      ]))
+      ])
+    )
     pushBoth('')
     content.push(`<img src="${providerDistributionImageUrl}"/>`)
     content.push('')
 
     pushBoth('### Deal Data Replication')
-    content.push('The below table shows how each many unique data are replicated across storage providers.')
+    content.push(
+      'The below table shows how each many unique data are replicated across storage providers.'
+    )
     content.push('')
     if (criteria.maxPercentageForLowReplica < 1) {
       if (isEarlyAllocation) {
         content.push('')
-        content.push(`**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`)
+        content.push(
+          `**Since this is the ${ordinal(allocations + 1)} allocation, the following restrictions have been relaxed:**`
+        )
       }
-      content.push(`- No more than ${(criteria.maxPercentageForLowReplica * 100).toFixed(0)}% of unique data are stored with less than ${criteria.lowReplicaThreshold + 1} providers.`)
+      content.push(
+        `- No more than ${(criteria.maxPercentageForLowReplica * 100).toFixed(0)}% of unique data are stored with less than ${criteria.lowReplicaThreshold + 1} providers.`
+      )
     }
     content.push('')
     const lowReplicaPercentage = replicationDistributions
-      .filter(distribution => distribution.num_of_replicas <= criteria.lowReplicaThreshold)
-      .map(distribution => distribution.percentage)
+      .filter(
+        (distribution) =>
+          distribution.num_of_replicas <= criteria.lowReplicaThreshold
+      )
+      .map((distribution) => distribution.percentage)
       .reduce((a, b) => a + b, 0)
     if (lowReplicaPercentage > criteria.maxPercentageForLowReplica) {
-      logger.info({ lowReplicaPercentage }, 'Low replica percentage exceeds max percentage')
-      pushBoth(emoji.get('warning') + ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than ${criteria.lowReplicaThreshold + 1} storage providers.`)
+      logger.info(
+        { lowReplicaPercentage },
+        'Low replica percentage exceeds max percentage'
+      )
+      pushBoth(
+        emoji.get('warning') +
+          ` ${(lowReplicaPercentage * 100).toFixed(2)}% of deals are for data replicated across less than ${criteria.lowReplicaThreshold + 1} storage providers.`
+      )
       pushBoth('')
     } else {
-      pushBoth(emoji.get('heavy_check_mark') + ' Data replication looks healthy.')
+      pushBoth(
+        emoji.get('heavy_check_mark') + ' Data replication looks healthy.'
+      )
       pushBoth('')
     }
-    content.push(generateGfmTable(replicationDistributionRows, [
-      ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
-      ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
-      ['numOfReplica', { name: 'Number of Providers', align: 'r' }],
-      ['percentage', { name: 'Deal Percentage', align: 'r' }]
-    ]))
+    content.push(
+      generateGfmTable(replicationDistributionRows, [
+        ['uniqueDataSize', { name: 'Unique Data Size', align: 'r' }],
+        ['totalDealSize', { name: 'Total Deals Made', align: 'r' }],
+        ['numOfReplica', { name: 'Number of Providers', align: 'r' }],
+        ['percentage', { name: 'Deal Percentage', align: 'r' }]
+      ])
+    )
     content.push('')
 
     content.push(`<img src="${replicationDistributionImageUrl}"/>`)
     pushBoth('')
     pushBoth('### Deal Data Shared with other Clients[^3]')
-    content.push('The below table shows how many unique data are shared with other clients.')
-    content.push('Usually different applications owns different data and should not resolve to the same CID.')
+    content.push(
+      'The below table shows how many unique data are shared with other clients.'
+    )
+    content.push(
+      'Usually different applications owns different data and should not resolve to the same CID.'
+    )
     content.push('')
-    content.push('However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.')
+    content.push(
+      'However, this could be possible if all below clients use same software to prepare for the exact same dataset or they belong to a series of LDN applications for the same dataset.'
+    )
     content.push('')
     if (cidSharingRows.length > 0) {
       for (const row of cidSharingRows) {
-        logger.info({ otherClientAddress: row.otherClientAddress }, 'CID is shared with another client')
+        logger.info(
+          { otherClientAddress: row.otherClientAddress },
+          'CID is shared with another client'
+        )
       }
       content.push(emoji.get('warning') + ' CID sharing has been observed.')
-      summary.push(emoji.get('warning') + ' CID sharing has been observed. (Top 3)')
+      summary.push(
+        emoji.get('warning') + ' CID sharing has been observed. (Top 3)'
+      )
       pushBoth('')
-      content.push(generateGfmTable(cidSharingRows, [
-        ['otherClientAddress', { name: 'Other Client', align: 'l' }],
-        ['otherClientOrganizationName', { name: 'Application', align: 'l' }],
-        ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
-        ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }],
-        ['verifier', { name: 'Approvers', align: 'l' }]
-      ]))
+      content.push(
+        generateGfmTable(cidSharingRows, [
+          ['otherClientAddress', { name: 'Other Client', align: 'l' }],
+          ['otherClientOrganizationName', { name: 'Application', align: 'l' }],
+          ['totalDealSize', { name: 'Total Deals Affected', align: 'r' }],
+          ['uniqueCidCount', { name: 'Unique CIDs', align: 'r' }],
+          ['verifier', { name: 'Approvers', align: 'l' }]
+        ])
+      )
       for (const row of cidSharingRows.slice(0, 3)) {
-        summary.push(`- ${row.totalDealSize} - ${row.otherClientAddress} - ${row.otherClientOrganizationName}`)
+        summary.push(
+          `- ${row.totalDealSize} - ${row.otherClientAddress} - ${row.otherClientOrganizationName}`
+        )
       }
     } else {
-      pushBoth(emoji.get('heavy_check_mark') + ' No CID sharing has been observed.')
+      pushBoth(
+        emoji.get('heavy_check_mark') + ' No CID sharing has been observed.'
+      )
     }
 
     pushBoth('')
-    pushBoth('[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`')
+    pushBoth(
+      '[^1]: To manually trigger this report, add a comment with text `checker:manualTrigger`'
+    )
     pushBoth('')
-    pushBoth('[^2]: Deals from those addresses are combined into this report as they are specified with `checker:manualTrigger`')
+    pushBoth(
+      '[^2]: Deals from those addresses are combined into this report as they are specified with `checker:manualTrigger`'
+    )
     pushBoth('')
-    pushBoth('[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`')
+    pushBoth(
+      '[^3]: To manually trigger this report with deals from other related addresses, add a comment with text `checker:manualTrigger <other_address_1> <other_address_2> ...`'
+    )
     pushBoth('')
     const joinedContent = content.join('\n')
     const contentUrl = await this.uploadReport(joinedContent, event)
     summary.push('### Full report')
-    summary.push(`Click ${generateLink('here', contentUrl)} to view the CID Checker report.`)
+    summary.push(
+      `Click ${generateLink('here', contentUrl)} to view the CID Checker report.`
+    )
     return [summary.join('\n'), joinedContent]
   }
 
-  private async uploadReport (joinedContent: string, event: { issue: Issue, repository: Repository }): Promise<string> {
+  private async uploadReport(
+    joinedContent: string,
+    event: { issue: Issue; repository: Repository }
+  ): Promise<string> {
     const { issue, repository } = event
     const logger = this.logger.child({ issueNumber: issue.number })
     const contentUrl = await this.uploadFile(
       `${repository.full_name}/issues/${issue.number}/${Date.now()}.md`,
       Buffer.from(joinedContent).toString('base64'),
-      `Upload report for issue #${issue.number} of ${repository.full_name}`)
+      `Upload report for issue #${issue.number} of ${repository.full_name}`
+    )
     logger.info({ contentUrl: contentUrl[1] }, 'Report content uploaded')
     return contentUrl[1]
   }

@@ -4,7 +4,7 @@ import {
   escape,
   generateLink,
   wrapInCode
-} from "../../src/checker/MarkdownUtils";
+} from '../../src/checker/MarkdownUtils'
 
 describe('MarkdownUtils', () => {
   describe('generateGfmTable', () => {
@@ -19,9 +19,9 @@ describe('MarkdownUtils', () => {
           age: 20
         }
       ]
-      const columeNames: Array<[keyof typeof objects[0], ColumnConfig]> = [
-        ['name', {name: 'Name', align: 'l'}],
-        ['age', {name: 'Age', align: 'r'}]
+      const columeNames: Array<[keyof (typeof objects)[0], ColumnConfig]> = [
+        ['name', { name: 'Name', align: 'l' }],
+        ['age', { name: 'Age', align: 'r' }]
       ]
       const result = generateGfmTable(objects, columeNames)
       expect(result).toBe(`| Name | Age |
@@ -35,7 +35,9 @@ describe('MarkdownUtils', () => {
     it('should escape markdown characters', () => {
       const text = '\\`*_{}[]<>()#+-.!|'
       const result = escape(text)
-      expect(result).toBe('\\\\\\`\\*\\_\\{\\}\\[\\]\\<\\>\\(\\)\\#\\+\\-\\.\\!\\|')
+      expect(result).toBe(
+        '\\\\\\`\\*\\_\\{\\}\\[\\]\\<\\>\\(\\)\\#\\+\\-\\.\\!\\|'
+      )
     })
 
     it('should escape markdown code', () => {

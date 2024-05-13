@@ -1,5 +1,5 @@
-import {Pool} from "pg";
-import {FileUploadConfig} from "../../src/checker/CidChecker";
+import { Pool } from 'pg'
+import { FileUploadConfig } from '../../src/checker/CidChecker'
 
 const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners
                             (
@@ -14,11 +14,11 @@ const createGeoStatement = `CREATE TABLE IF NOT EXISTS active_miners
                                 latitude          REAL,
                                 longitude         REAL,
                                 radius            REAL
-                            )`;
+                            )`
 const insertGeoStatement = `INSERT INTO active_miners
                             (miner_id, last_updated, raw_byte_power, quality_adj_power, country, region, city, metro,
                              latitude, longitude, radius)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
+                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 const createStatement = `CREATE TABLE IF NOT EXISTS current_state
                          (
                              deal_id                 INTEGER NOT NULL PRIMARY KEY,
@@ -36,16 +36,16 @@ const createStatement = `CREATE TABLE IF NOT EXISTS current_state
                              sector_start_epoch      INTEGER NOT NULL,
                              last_updated_epoch      INTEGER NOT NULL,
                              slash_epoch             INTEGER NOT NULL
-                         )`;
+                         )`
 
 const createClientMappingStatement = `CREATE TABLE IF NOT EXISTS client_mapping
                                       (
                                           client         TEXT NOT NULL PRIMARY KEY,
                                           client_address TEXT NOT NULL
-                                      )`;
+                                      )`
 
 const insertClientMappingStatement = `INSERT INTO client_mapping (client, client_address)
-                                      VALUES ($1, $2)`;
+                                      VALUES ($1, $2)`
 
 const insertCurrentStateStatement = `INSERT INTO current_state (deal_id, piece_cid, piece_size, verified_deal, client,
                                                                 provider, label, start_epoch, end_epoch,
@@ -54,8 +54,7 @@ const insertCurrentStateStatement = `INSERT INTO current_state (deal_id, piece_c
                                                                 sector_start_epoch,
                                                                 last_updated_epoch, slash_epoch)
                                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9,
-                                             $10, $11, $12, $13, $14, $15)`;
-
+                                             $10, $11, $12, $13, $14, $15)`
 
 export const fileUploadConfig: FileUploadConfig = {
   committerName: 'test-name',
@@ -64,34 +63,50 @@ export const fileUploadConfig: FileUploadConfig = {
   committerEmail: 'test-email',
   owner: 'test-owner',
   searchRepo: 'test-search-repo',
-  searchRepoLarge: 'test-search-repo-large',
+  searchRepoLarge: 'test-search-repo-large'
 }
 
-let initialized = false;
+let initialized = false
 export const testDatabase = new Pool({
   host: 'localhost',
   user: 'postgres',
   password: 'password',
-  database: 'postgres',
+  database: 'postgres'
 })
 
 export async function setupDatabase() {
   if (initialized) {
-    return;
+    return
   }
-  initialized = true;
-  await testDatabase.query("DROP TABLE IF EXISTS current_state");
-  await testDatabase.query("DROP TABLE IF EXISTS client_mapping");
-  await testDatabase.query("DROP TABLE IF EXISTS active_miners");
-  await testDatabase.query(createStatement);
-  await testDatabase.query(createClientMappingStatement);
-  await testDatabase.query(createGeoStatement);
-  await testDatabase.query(insertClientMappingStatement, ['f01000', 'f12345']);
-  await testDatabase.query(insertClientMappingStatement, ['f02000', 'fxxxx2']);
-  await testDatabase.query(insertClientMappingStatement, ['f03000', 'fxxxx3']);
+  initialized = true
+  await testDatabase.query('DROP TABLE IF EXISTS current_state')
+  await testDatabase.query('DROP TABLE IF EXISTS client_mapping')
+  await testDatabase.query('DROP TABLE IF EXISTS active_miners')
+  await testDatabase.query(createStatement)
+  await testDatabase.query(createClientMappingStatement)
+  await testDatabase.query(createGeoStatement)
+  await testDatabase.query(insertClientMappingStatement, ['f01000', 'f12345'])
+  await testDatabase.query(insertClientMappingStatement, ['f02000', 'fxxxx2'])
+  await testDatabase.query(insertClientMappingStatement, ['f03000', 'fxxxx3'])
   let id = 0
   const addDeal = async (client: string, provider: string, piece: string) => {
-    await testDatabase.query(insertCurrentStateStatement, [++id, piece, 100, true, client, provider, "", 1, 999999999, 0, 0, 0, 1, 1, -1])
+    await testDatabase.query(insertCurrentStateStatement, [
+      ++id,
+      piece,
+      100,
+      true,
+      client,
+      provider,
+      '',
+      1,
+      999999999,
+      0,
+      0,
+      0,
+      1,
+      1,
+      -1
+    ])
   }
   await addDeal('f01000', 'provider0', 'piece0')
   await addDeal('f01000', 'provider0', 'piece0')
@@ -111,7 +126,19 @@ export async function setupDatabase() {
     const latitude = Math.random() * 180 - 90
     const longitude = Math.random() * 180 - 90
     const radius = Math.random() * 1000
-    await testDatabase.query(insertGeoStatement, [provider, 0, 0, 0, country, region, city, 0, latitude, longitude, radius])
+    await testDatabase.query(insertGeoStatement, [
+      provider,
+      0,
+      0,
+      0,
+      country,
+      region,
+      city,
+      0,
+      latitude,
+      longitude,
+      radius
+    ])
   }
   await addProvider('provider0', '')
   await addProvider('provider1', 'US,CA,San Francisco')

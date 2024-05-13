@@ -31,10 +31,7 @@ export default class BarChart {
     Chart.register(ChartDataLabels)
   }
 
-  public static getImage (
-    entries: BarChartEntry[],
-    opts: BarOptions
-  ): string {
+  public static getImage(entries: BarChartEntry[], opts: BarOptions): string {
     const canvas = createCanvas(opts?.width ?? 2000, opts?.height ?? 1000)
     const ctx = canvas.getContext('2d')
 
@@ -42,12 +39,18 @@ export default class BarChart {
       type: 'bar',
       data: {
         labels: entries.map((entry) => entry.xValue),
-        datasets: [{
-          data: entries.map((entry) => ({ y: entry.yValue, x: entry.xValue, label: entry.barLabel })),
-          backgroundColor: opts.backgroundColors,
-          borderColor: opts.borderColors,
-          borderWidth: 1
-        }]
+        datasets: [
+          {
+            data: entries.map((entry) => ({
+              y: entry.yValue,
+              x: entry.xValue,
+              label: entry.barLabel
+            })),
+            backgroundColor: opts.backgroundColors,
+            borderColor: opts.borderColors,
+            borderWidth: 1
+          }
+        ]
       },
       options: {
         elements: {
@@ -86,7 +89,11 @@ export default class BarChart {
               display: true,
               text: opts.titleYText
             },
-            suggestedMax: Math.max.apply(null, entries.map((e) => e.yValue)) * 1.05,
+            suggestedMax:
+              Math.max.apply(
+                null,
+                entries.map((e) => e.yValue)
+              ) * 1.05,
             ticks: {
               maxRotation: 45,
               minRotation: 45,

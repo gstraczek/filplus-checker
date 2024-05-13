@@ -1,8 +1,7 @@
-import BarChart, { BarChartEntry } from "../../src/charts/BarChart"
-import * as fs from "fs"
-import xbytes from "xbytes"
-import { Chart } from "chart.js"
-
+import BarChart, { BarChartEntry } from '../../src/charts/BarChart'
+import * as fs from 'fs'
+import xbytes from 'xbytes'
+import { Chart } from 'chart.js'
 
 describe('BarChart', () => {
   let data: BarChartEntry[]
@@ -13,7 +12,6 @@ describe('BarChart', () => {
         yValue: 200,
         xValue: 1,
         barLabel: xbytes(200)
-
       },
       {
         yValue: 900,
@@ -42,27 +40,32 @@ describe('BarChart', () => {
         'rgba(255, 99, 132)',
         'rgba(255, 99, 132)',
         'rgba(75, 192, 192)',
-        'rgba(75, 192, 192)',
+        'rgba(75, 192, 192)'
       ],
-      borderColors: [
-        '#fff',
-        '#fff',
-        '#fff',
-        '#fff',
-      ],
+      borderColors: ['#fff', '#fff', '#fff', '#fff'],
       legendOpts: {
         display: true,
         labels: {
           generateLabels: (_: Chart) => {
             return [
-              { text: 'low provider count', fillStyle: 'rgba(255, 99, 132)', strokeStyle: '#fff' },
-              { text: 'healthy provider count', fillStyle: 'rgba(75, 192, 192)', strokeStyle: '#fff' }
+              {
+                text: 'low provider count',
+                fillStyle: 'rgba(255, 99, 132)',
+                strokeStyle: '#fff'
+              },
+              {
+                text: 'healthy provider count',
+                fillStyle: 'rgba(75, 192, 192)',
+                strokeStyle: '#fff'
+              }
             ]
           }
         }
       } as any
     })
     fs.writeFileSync('tests/fixtures/barchart.png', image, 'base64')
-    expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(image)
+    expect(fs.readFileSync('tests/fixtures/barchart.png', 'base64')).toEqual(
+      image
+    )
   })
 })
