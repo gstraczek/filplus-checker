@@ -10,7 +10,7 @@
     "lint": "eslint --ext ts --fix src/",
     "lint:nofix": "eslint --ext ts src/",
     "release": "rm -rf dist && npm run build && cp package*.json dist && cd dist && npm ci --omit=dev && strip ./node_modules/canvas/build/Release/librsvg-2.so.2 && rm -rf ./node_modules/chart.js/dist/docs && zip -r index.zip .",
-    "format": "prettier --write src/**/*.ts && prettier --write tests/**/*.ts"
+    "format": "prettier --write --ext ts src/"
   },
   "repository": {
     "type": "git",

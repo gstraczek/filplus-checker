@@ -6,7 +6,7 @@ export interface ColumnConfig {
   align: 'l' | 'c' | 'r'
 }
 
-export function generateGfmTable<T>(
+export function generateGfmTable<T> (
   objects: T[],
   columeNames: Array<[keyof T, ColumnConfig]>
 ): string {
@@ -20,11 +20,11 @@ export function generateGfmTable<T>(
 }
 
 // Based on https://www.markdownguide.org/basic-syntax/#escaping-characters
-export function escape(text: string): string {
+export function escape (text: string): string {
   return text.replace(/([\\`*_{}[\]<>()#+\-.!|])/g, '\\$1')
 }
 
-export function wrapInCode(text: string): string {
+export function wrapInCode (text: string): string {
   return '`' + text.replace('`', "'") + '`'
 }
 
@@ -34,7 +34,7 @@ export function wrapInCode(text: string): string {
  * @param url
  * @param fakeLink If true, the link will be a fake link so that the action issue won't get mentioned
  */
-export function generateLink(
+export function generateLink (
   text: string,
   url: string,
   fakeLink: boolean = false

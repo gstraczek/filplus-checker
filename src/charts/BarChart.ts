@@ -31,7 +31,7 @@ export default class BarChart {
     Chart.register(ChartDataLabels)
   }
 
-  public static getImage(entries: BarChartEntry[], opts: BarOptions): string {
+  public static getImage (entries: BarChartEntry[], opts: BarOptions): string {
     const canvas = createCanvas(opts?.width ?? 2000, opts?.height ?? 1000)
     const ctx = canvas.getContext('2d')
 

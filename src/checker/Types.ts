@@ -31,7 +31,7 @@ export interface MinerInfo {
 }
 
 export type ProviderDistributionWithLocation = ProviderDistribution &
-  Location & { new: boolean }
+Location & { new: boolean }
 
 export interface ProviderDistributionRow {
   provider: string

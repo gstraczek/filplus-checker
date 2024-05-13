@@ -5,13 +5,17 @@ import { Octokit } from '@octokit/core'
 
 export const pool = new Pool()
 export function getCidChecker (logger: Logger, octo?: Octokit): CidChecker {
-  if (process.env.UPLOAD_REPO_OWNER === undefined ||
+  if (
+    process.env.UPLOAD_REPO_OWNER === undefined ||
     process.env.UPLOAD_REPO_NAME === undefined ||
     process.env.UPLOAD_REPO_COMMITTER_NAME === undefined ||
-  //    process.env.UPLOAD_TOKEN === undefined ||
+    //    process.env.UPLOAD_TOKEN === undefined ||
     process.env.IPINFO_TOKEN === undefined ||
-    process.env.UPLOAD_REPO_COMMITTER_EMAIL === undefined) {
-    throw new Error('IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined')
+    process.env.UPLOAD_REPO_COMMITTER_EMAIL === undefined
+  ) {
+    throw new Error(
+      'IPINFO_TOKEN, UPLOAD_TOKEN, UPLOAD_REPO_OWNER, UPLOAD_REPO_NAME, UPLOAD_REPO_COMMITTER_NAME, UPLOAD_REPO_COMMITTER_EMAIL must be defined'
+    )
   }
 
   const allocationBotId = parseInt(process.env.ALLOCATION_BOT_ID ?? '0')
@@ -21,7 +25,7 @@ export function getCidChecker (logger: Logger, octo?: Octokit): CidChecker {
 
   const fileUploadConfig: FileUploadConfig = {
     local: process.env.UPLOAD_DIR,
-    localBaseURL: process.env.UPLOAD_BASE_URL || '',
+    localBaseURL: process.env.UPLOAD_BASE_URL ?? '',
     owner: process.env.UPLOAD_REPO_OWNER,
     repo: process.env.UPLOAD_REPO_NAME,
     branch: process.env.UPLOAD_REPO_BRANCH,

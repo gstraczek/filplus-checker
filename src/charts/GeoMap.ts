@@ -42,7 +42,7 @@ export default class GeoMap {
     ).features
   }
 
-  public static getImage(
+  public static getImage (
     entries: GeoMapEntry[],
     width = 2000,
     height = 1000
