@@ -1,5 +1,5 @@
-import {manualTrigger} from "../src/ManualTrigger";
-import * as fs from 'fs';
+import { manualTrigger } from '../src/ManualTrigger'
+import * as fs from 'fs'
 
 xdescribe('manualTrigger', () => {
   jasmine.DEFAULT_TIMEOUT_INTERVAL = 86400000

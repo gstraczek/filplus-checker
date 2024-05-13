@@ -15,31 +15,35 @@ export interface DatacapAllocation {
     'Data Type': string
     'Total Requested Amount': string
     'Single Size Dataset': string
-    'Replicas': number
+    Replicas: number
     'Weekly Allocation': string
   }
   Lifecycle: {
     State: string
     'Validated At': string
     'Validated By': string
-    'Active': boolean
+    Active: boolean
     'Updated At': string
     'Active Request ID': string
     'On Chain Address': string
     'Multisig Address': string
   }
-  'Allocation Requests': [{
-    'ID': string
-    'Request Type': string
-    'Created At': string
-    'Updated At': string
-    'Active': boolean
-    'Allocation Amount': string
-    'Signers': [{
-      'Github Username': string
-      'Signing Address': string
+  'Allocation Requests': [
+    {
+      ID: string
+      'Request Type': string
       'Created At': string
-      'Message CID': string
-    }]
-  }]
+      'Updated At': string
+      Active: boolean
+      'Allocation Amount': string
+      Signers: [
+        {
+          'Github Username': string
+          'Signing Address': string
+          'Created At': string
+          'Message CID': string
+        }
+      ]
+    }
+  ]
 }

@@ -1,14 +1,22 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyResult, Context } from 'aws-lambda'
+import {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyResult,
+  Context
+} from 'aws-lambda'
 import { getCidChecker } from './Dependency'
 import pino from 'pino'
 import { RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 import * as dotenv from 'dotenv'
 
-export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context): Promise<APIGatewayProxyResult> {
+export async function manualTrigger(
+  event: APIGatewayProxyEventV2,
+  _: Context
+): Promise<APIGatewayProxyResult> {
   dotenv.config()
   const issueId = event.queryStringParameters?.issueId
   const repo = event.queryStringParameters?.repo
-  const otherAddresses: string[] = event.queryStringParameters?.otherAddresses?.split(' ') ?? []
+  const otherAddresses: string[] =
+    event.queryStringParameters?.otherAddresses?.split(' ') ?? []
   if (issueId === undefined) {
     return {
       statusCode: 400,
@@ -41,28 +49,37 @@ export async function manualTrigger (event: APIGatewayProxyEventV2, _: Context):
   logger.info(`Fetching issue ${issueId}`)
   let response: Response
   try {
-    response = await cidchecker.octokit.request('GET /repos/{owner}/{repo}/issues/{issue_number}', params)
+    response = await cidchecker.octokit.request(
+      'GET /repos/{owner}/{repo}/issues/{issue_number}',
+      params
+    )
   } catch (e) {
     return {
       statusCode: 500,
       body: 'Error fetching issue ' + issueId
     }
   }
-  const result = await cidchecker.check({
-    issue: response.data,
-    repository: {
-      owner: {
-        login: ownerSplit[0]
-      },
-      name: ownerSplit[1],
-      full_name: repo
-    }
-  } as any, [{
-    maxProviderDealPercentage: 0.25,
-    maxDuplicationPercentage: 0.20,
-    maxPercentageForLowReplica: 0.25,
-    lowReplicaThreshold: 3
-  }], otherAddresses)
+  const result = await cidchecker.check(
+    {
+      issue: response.data,
+      repository: {
+        owner: {
+          login: ownerSplit[0]
+        },
+        name: ownerSplit[1],
+        full_name: repo
+      }
+    } as any,
+    [
+      {
+        maxProviderDealPercentage: 0.25,
+        maxDuplicationPercentage: 0.2,
+        maxPercentageForLowReplica: 0.25,
+        lowReplicaThreshold: 3
+      }
+    ],
+    otherAddresses
+  )
 
   return {
     statusCode: 200,
